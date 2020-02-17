@@ -92,12 +92,23 @@ SELECT COUNT(affiliation) FROM prod.article_authors
 SELECT COUNT(DISTINCT article) FROM prod.article_authors
 SELECT COUNT(DISTINCT affiliation) FROM prod.article_authors
 
+---unassigned affiliation strings, before correction:
+SELECT COUNT(affiliation)
+FROM prod.baseline_affiliation_institutions
+WHERE institution=0
+
+--- authors per affiliation
+SELECT i.id, a.affiliation, COUNT(a.id)
+FROM prod.article_authors a
+GROUP BY 1,2
+ORDER BY 3 DESC
+
 ---SAMPLE SIZE CALCULATION
 --- get random sample of 100 to approximate population error rate:
-SELECT i.id, a.affiliation, i.name, COUNT(a.id)
+SELECT DISTINCT a.affiliation, i.name, i.country, random() AS rand
 FROM prod.article_authors a
 INNER JOIN prod.affiliation_institutions lnk ON a.affiliation = lnk.affiliation
 INNER JOIN prod.institutions i ON lnk.institution=i.id
-GROUP BY 1,2,3
-ORDER BY random()
+WHERE lnk.institution > 0
+ORDER BY rand
 LIMIT 100;
