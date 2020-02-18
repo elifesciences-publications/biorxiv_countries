@@ -97,6 +97,51 @@ SELECT COUNT(affiliation)
 FROM prod.baseline_affiliation_institutions
 WHERE institution=0
 
+--- all the affiliation strings that changed institution
+SELECT list.affiliation, a.name AS oldname, b.name AS newname
+FROM (
+    SELECT r.affiliation, b.institution AS old, r.institution AS new
+    FROM prod.affiliation_institutions r
+    INNER JOIN prod.baseline_affiliation_institutions b ON r.affiliation=b.affiliation
+	WHERE r.institution > 0
+) AS list
+INNER JOIN prod.institutions a ON list.old=a.id
+INNER JOIN prod.institutions b ON list.new=b.id
+WHERE list.old != list.new
+
+--- total authors affected by changes:
+SELECT COUNT(id)
+FROM prod.article_authors
+WHERE affiliation IN (
+	SELECT affiliation FROM (
+		SELECT list.affiliation, a.name AS oldname, b.name AS newname
+		FROM (
+			SELECT r.affiliation, b.institution AS old, r.institution AS new
+			FROM prod.affiliation_institutions r
+			INNER JOIN prod.baseline_affiliation_institutions b ON r.affiliation=b.affiliation
+		) AS list
+		INNER JOIN prod.institutions a ON list.old=a.id
+		INNER JOIN prod.institutions b ON list.new=b.id
+		WHERE list.old != list.new
+	) AS changed
+)
+
+---------
+--- Precision/recall per country
+
+--- Total strings per country, before correction:
+
+
+
+SELECT list.affiliation, a.country AS oldcountry, b.country AS newcountry
+FROM (
+    SELECT r.affiliation, b.institution AS old, r.institution AS new
+    FROM prod.affiliation_institutions r
+    INNER JOIN prod.baseline_affiliation_institutions b ON r.affiliation=b.affiliation
+) AS list
+INNER JOIN prod.institutions a ON list.old=a.id
+INNER JOIN prod.institutions b ON list.new=b.id
+
 --- authors per affiliation
 SELECT i.id, a.affiliation, COUNT(a.id)
 FROM prod.article_authors a

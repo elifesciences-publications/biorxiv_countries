@@ -2,7 +2,7 @@ library(ggplot2)
 library(cowplot) # for combining figures
 require(scales) # for axis labels
 library(grid)
-library(ggthemes)# for pretty
+library(RColorBrewer)# for pretty
 
 library(plyr)
 library(DescTools) # for harmonic mean
@@ -70,16 +70,40 @@ x <- ggplot(monthframe, aes(x=month, y=running_total,
                             group=country, color=country, fill=country)) +
   geom_bar(position="fill", stat="identity") +
   labs(x = "", y = "Cumulative preprints") +
+  scale_y_continuous(expand=c(0,0)) +
   theme_bw() +
+  scale_fill_brewer(palette = 'Set1', guide='legend',
+                    aesthetics = c('color','fill')) +
   theme(
     axis.text.x=element_blank(),
+    axis.text.y=element_blank(),
     legend.position="bottom"
   )
 
-x <- add_year_x(x, TRUE, -0.01)
+x <- add_year_x(x, TRUE, -0.03)
+x <- ggplot_gtable(ggplot_build(x))
+x$layout$clip[x$layout$name == "panel"] <- "off"
 plot(x)
 
 
+# Line plot instead of area:
+lineplot <- ggplot(monthframe, aes(x=month, y=running_total,
+                            group=country, color=country)) +
+  geom_line() +
+  labs(x = "", y = "Cumulative preprints") +
+  scale_y_continuous(expand=c(0,0)) +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set1', guide='legend',
+                    aesthetics = c('color')) +
+  theme(
+    axis.text.x=element_blank(),
+    axis.text.y=element_blank(),
+    legend.position="bottom"
+  )
+lineplot <- add_year_x(lineplot, TRUE, -500)
+lineplot <- ggplot_gtable(ggplot_build(lineplot))
+lineplot$layout$clip[lineplot$layout$name == "panel"] <- "off"
+plot(lineplot)
 
 
 # FIGURE: Authors per paper

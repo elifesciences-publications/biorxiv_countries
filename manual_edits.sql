@@ -320,7 +320,7 @@ UPDATE prod.affiliation_institutions SET institution=499 WHERE institution=0 AND
 UPDATE prod.affiliation_institutions SET institution=1289 WHERE institution=0 AND affiliation LIKE '%South Dakota Center%';
 
 ---Change the 'Institut National de la Recherche Agronomique' to point to the French institution and not the entry in Morocco
-UPDATE prod.institutions SET ror='https://ror.org/01x3gbx83', grid='grid.414548.8', country='FR' WHERE id=383
+UPDATE prod.institutions SET ror='https://ror.org/01x3gbx83', grid='grid.414548.8', country='FR' WHERE id=383;
 
 ---Cancer center in Canada attributed to Tuvalu
 UPDATE prod.affiliation_institutions SET institution=5000 WHERE institution=4587;

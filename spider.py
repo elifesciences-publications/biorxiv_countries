@@ -21,7 +21,7 @@
 #     email: blekhman@umn.edu
 #     mail: MCB 6-126, 420 Washington Avenue SE, Minneapolis, MN 55455
 #     http://blekhmanlab.org/
-
+import csv
 import sys
 import time
 
@@ -239,6 +239,17 @@ def link_canonical_author(spider, entry):
     spider.record_author_links(entry, new_id)
     spider.log.record(f'  Author {entry.name} recorded with ID {new_id}', 'debug')
 
+def load_manual_assignments(spider, file):
+  with open(file,'r') as csvfile, spider.connection.db.cursor() as cursor: # asdf
+    reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+    i= 0
+    for row in reader:
+      spider.log.record(f'|{row[0]}| assigned to |{row[1]}|')
+      cursor.execute('UPDATE prod.affiliation_institutions SET institution=%s WHERE affiliation=%s', (row[1], row[0]))
+      i += 1
+      if i % 100 == 0:
+        print(f'\n\n\n{i}\n\n')
+
 def full_run(spider):
   todo = spider.find_unprocessed_articles()
   spider.process_articles(todo)
@@ -276,3 +287,10 @@ if __name__ == "__main__":
       consolidate(spider, int(sys.argv[2]), reconsolidate=True)
     else:
       consolidate(spider, reconsolidate=True)
+  
+  elif sys.argv[1] == 'load': 
+    if len(sys.argv) > 2:
+      load_manual_assignments(spider,sys.argv[2])
+    else:
+      print("Expected file name to load. Exiting.")
+      exit(1)
