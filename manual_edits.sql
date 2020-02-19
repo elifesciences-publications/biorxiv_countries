@@ -1,3 +1,15 @@
+--- A null affiliation string should be classified as "unknown"
+UPDATE prod.article_authors SET affiliation='!!unknown!!' WHERE affiliation IS NULL;
+INSERT INTO prod.affiliation_institutions (affiliation, institution) VALUES ('!!unknown!!',0)
+
+--- Get rid of articles that ran into crawler errors
+DELETE FROM prod.article_authors
+WHERE article IN (
+	SELECT DISTINCT article
+	FROM prod.article_authors
+	WHERE name='000bad_data000'
+)
+
 --- MRC institutions misattributed to Buddhist center
 UPDATE prod.affiliation_institutions SET institution=4656 WHERE institution=4254;
 
@@ -324,4 +336,20 @@ UPDATE prod.institutions SET ror='https://ror.org/01x3gbx83', grid='grid.414548.
 
 ---Cancer center in Canada attributed to Tuvalu
 UPDATE prod.affiliation_institutions SET institution=5000 WHERE institution=4587;
----------------- DONE ABOVE THIS POINT
+
+--- *** REMOVE all institutions that now have no affiliations linked to them:
+random line of nonsense characters here to prevent this query from running accidentally asdflkjaspodfijapsdijf
+
+DELETE FROM prod.institutions
+WHERE id IN (
+	SELECT id
+	FROM (
+		SELECT i.id, COUNT(a.institution) AS total
+		FROM prod.institutions i
+		LEFT JOIN prod.affiliation_institutions a ON i.id=a.institution
+		GROUP BY 1
+		ORDER BY 2 ASC
+	) AS totalaff
+	WHERE total=0
+)
+---

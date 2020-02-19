@@ -6,7 +6,9 @@ library(RColorBrewer)# for pretty
 
 library(plyr)
 library(DescTools) # for harmonic mean
+
 library(rworldmap) # for map of preprints
+
 
 setwd('/Users/rabdill/code/biorxiv_authors/code/paper/data')
 
@@ -106,7 +108,49 @@ lineplot$layout$clip[lineplot$layout$name == "panel"] <- "off"
 plot(lineplot)
 
 
-# FIGURE: Authors per paper
+# FIGURE: map of preprints per country
+data <- read.csv('preprints_country_all.csv', header = TRUE, stringsAsFactors = FALSE)
+colnames(data) <- c('country','value')
+toplot <- joinCountryData2Map(data, joinCode = "ISO2",
+    nameJoinColumn = "country",  mapResolution = "coarse", verbose=FALSE)
+
+# chop off antarctica
+toplot <- subset(toplot, continent != "Antarctica")
+
+map <- mapCountryData(toplot, nameColumnToPlot = "value",
+   catMethod = "logFixedWidth", numCats=6,
+   xlim = NA, ylim = NA, mapRegion = "world",
+   colourPalette = "heat", addLegend = FALSE, borderCol = "grey",
+   mapTitle = "",
+   oceanCol = NA, aspect = 1,
+   missingCountryCol = NA, add = FALSE,
+   lwd = 0.5)
+
+do.call(
+  addMapLegend,
+  c( map, legendLabels="all",
+     horizontal=TRUE,
+     legendIntervals='page',
+     legendMar=6.5, # move it closer to the continents
+     legendWidth=0.7,
+     labelFontSize=0.85,
+     tcl=-1.2 # tick marks
+     )
+)
+
+
+# FIGURE: Authors
+
+# panel: per affiliation
+data=read.csv('authors_per_affiliation.csv')
+per_aff <- ggplot(data, aes(x=count)) +
+  geom_histogram(bins=30) +
+  scale_y_log10(labels=comma) +
+  labs(x="Authors reporting affiliation", y="Affiliations") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set1', guide='legend',
+      aesthetics = c('color','fill'))
+# panel: Authors per paper
 data <- read.csv('authors_per_paper.csv')
 colnames(data) <- c('id','year','authors')
 
@@ -121,36 +165,16 @@ for(year in seq(2013,2019,1)) {
   upper[[i]] <- calc[['upr.ci']]
   i <- i + 1
 }
-
 toplot <- data.frame(
   year = seq(2013,2019,1),
   harm = unlist(harms, use.names=FALSE),
   lower = unlist(lower, use.names=FALSE),
   upper = unlist(upper)
 )
-ggplot(toplot, aes(x=year, y=harm)) +
+per_paper <- ggplot(toplot, aes(x=year, y=harm)) +
   geom_line() +
   scale_x_continuous(breaks=seq(2013, 2019, 1)) +
   labs(x='Year', y='Authors per paper')
 
-
-# FIGURE: map of preprints per country
-data <- read.csv('preprints_country_all.csv', header = TRUE, stringsAsFactors = FALSE)
-colnames(data) <- c('country','value')
-toplot <- joinCountryData2Map(data, joinCode = "ISO2",
-    nameJoinColumn = "country",  mapResolution = "coarse", verbose=FALSE)
-
-mapCountryData(toplot, nameColumnToPlot = "value",
-   catMethod = "logFixedWidth", numCats=5,
-   xlim = NA, ylim = NA, mapRegion = "world",
-   colourPalette = "heat", addLegend = TRUE, borderCol = "grey",
-   mapTitle = "Preprints per country", oceanCol = NA, aspect = 1,
-   missingCountryCol = NA, add = FALSE,
-   lwd = 0.5)
-
-# FIGURE: Authors per affiliation
-data=read.csv('authors_per_affiliation.csv')
-ggplot(data, aes(x=count)) +
-  geom_histogram() +
-  scale_y_log10(labels=comma) +
-labs(x="authors reporting affiliation", y="affiliations")
+# compile figure
+plot_grid(per_paper, per_aff
