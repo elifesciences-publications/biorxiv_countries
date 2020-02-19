@@ -47,9 +47,7 @@ def consolidate(spider, limit=5000000, reconsolidate=False):
       LEFT JOIN prod.canonical_author c ON a.id=c.article_author
       INNER JOIN prod.affiliation_institutions i ON a.affiliation=i.affiliation 
       WHERE c.canonical IS NULL
-      AND i.institution > 0
-      AND a.affiliation IS NOT NULL
-      ORDER BY a.observed
+      ORDER BY a.observed, a.id, a.name
       LIMIT %s
     """, (limit,))
     for x in cursor:
@@ -60,8 +58,7 @@ def consolidate(spider, limit=5000000, reconsolidate=False):
   for entry in todo:
     link_canonical_author(spider, entry)
     done += 1
-    if done % 10000 == 0:
-      spider.log.record(f'Progress: {done} out of {len(todo)}', 'info')
+    if done % 1000 == 0:
       with spider.connection.db.cursor() as cursor:
         cursor.execute(f"""
           SELECT COUNT(article_author), COUNT(DISTINCT canonical)
@@ -138,6 +135,7 @@ def link_canonical_author(spider, entry):
         #   *tk
 
       # if author has ORCID but no full name match, check match with no middle initials
+      # but with an institution match
       spider.log.record(f'  No full-name match. Checking without middle initials', 'debug')
       cursor.execute(f"""
         SELECT DISTINCT i.author
@@ -145,6 +143,7 @@ def link_canonical_author(spider, entry):
         LEFT JOIN prod.author_names n ON i.author=n.author
         INNER JOIN prod.authors a ON a.id=i.author
         WHERE i.institution = %s
+        AND i.institution > 0
         AND n.name_nomi = %s
         AND a.orcid IS NULL
       """, (entry.affiliation, entry.name_nomi,))
@@ -204,6 +203,7 @@ def link_canonical_author(spider, entry):
       FROM prod.author_institutions i
       LEFT JOIN prod.author_names n ON i.author=n.author
       WHERE i.institution = %s
+      AND i.institution > 0
       AND n.name_nomi = %s
     """, (entry.affiliation, entry.name_nomi,))
     author = cursor.fetchone()
