@@ -1,4 +1,3 @@
-
 ---Authors per paper
 SELECT article, EXTRACT(YEAR FROM observed), COUNT(id)
 FROM prod.article_authors
@@ -198,6 +197,96 @@ WHERE aa.id IN (
 )
 GROUP BY c.name
 ORDER BY preprints DESC
+
+--- international collaborations by country (ONLY senior authors in the 'other' category)
+SELECT c.name, COUNT(aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+) AND aa.article IN (
+    SELECT DISTINCT article
+    FROM (
+        SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+        FROM prod.article_authors aa
+        INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+        INNER JOIN prod.institutions i ON ai.institution=i.id
+        INNER JOIN prod.countries c ON i.country=c.alpha2
+        WHERE i.id > 0
+        GROUP BY aa.article
+        ORDER BY countrycount DESC
+    ) AS countrz
+    WHERE countrycount >= 2
+) AND c.name NOT IN (
+    SELECT name FROM (
+        SELECT countries.name, COUNT(aa.article) AS preprints
+        FROM prod.article_authors aa
+        INNER JOIN prod.affiliation_institutions ai
+            ON ai.affiliation=aa.affiliation
+        INNER JOIN prod.institutions
+            ON institutions.id=ai.institution
+        INNER JOIN prod.countries
+            ON institutions.country=countries.alpha2
+        WHERE aa.id IN (
+            SELECT id FROM (
+                SELECT article, MAX(id) AS id
+                FROM prod.article_authors
+                GROUP BY 1
+            ) AS seniorauthors
+        )
+        GROUP BY 1
+        ORDER BY 2 DESC
+    ) AS preprints
+    LIMIT 8
+)
+GROUP BY c.name
+ORDER BY preprints DESC
+
+--- international collaborations by country (any author in the 'other' category)
+SELECT COUNT(DISTINCT aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+WHERE aa.article IN (
+    SELECT DISTINCT article
+    FROM (
+        SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+        FROM prod.article_authors aa
+        INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+        INNER JOIN prod.institutions i ON ai.institution=i.id
+        INNER JOIN prod.countries c ON i.country=c.alpha2
+        WHERE i.id > 0
+        GROUP BY aa.article
+        ORDER BY countrycount DESC
+    ) AS countrz
+    WHERE countrycount >= 2
+) AND c.name NOT IN (
+    SELECT name FROM (
+        SELECT countries.name, COUNT(aa.article) AS preprints
+        FROM prod.article_authors aa
+        INNER JOIN prod.affiliation_institutions ai
+            ON ai.affiliation=aa.affiliation
+        INNER JOIN prod.institutions
+            ON institutions.id=ai.institution
+        INNER JOIN prod.countries
+            ON institutions.country=countries.alpha2
+        WHERE aa.id IN (
+            SELECT id FROM (
+                SELECT article, MAX(id) AS id
+                FROM prod.article_authors
+                GROUP BY 1
+            ) AS seniorauthors
+        )
+        GROUP BY 1
+        ORDER BY 2 DESC
+    ) AS preprints
+    LIMIT 8
+)
 --- international collaborations, by country (any author)
 SELECT c.name, COUNT(DISTINCT aa.article) AS preprints
 FROM prod.article_authors aa
@@ -221,7 +310,342 @@ WHERE aa.article IN (
 GROUP BY c.name
 ORDER BY preprints DESC
 
+--- International collaborations per institution
+SELECT i.id, i.name, totalcount.preprints AS total, intlcount.preprints AS international, (intlcount.preprints/totalcount.preprints::decimal) AS proportion
+FROM prod.institutions i
+INNER JOIN (
+    SELECT i.id, COUNT(aa.article) AS preprints
+    FROM prod.article_authors aa
+    INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN prod.institutions i ON ai.institution=i.id
+    GROUP BY 1
+) AS totalcount ON totalcount.id=i.id
+INNER JOIN (
+    SELECT i.id, COUNT(aa.article) AS preprints
+    FROM prod.article_authors aa
+    INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN prod.institutions i ON ai.institution=i.id
+    WHERE aa.article IN ( --- only show international papers
+        SELECT DISTINCT article
+        FROM (
+            SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+            FROM prod.article_authors aa
+            INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+            INNER JOIN prod.institutions i ON ai.institution=i.id
+            INNER JOIN prod.countries c ON i.country=c.alpha2
+            WHERE i.id > 0
+            GROUP BY aa.article
+            ORDER BY countrycount DESC
+        ) AS countrz
+        WHERE countrycount >= 2
+    )
+    GROUP BY 1
+) AS intlcount ON intlcount.id=i.id
+WHERE totalcount.preprints >= 250
+ORDER BY 3 DESC,4
 
+--- combinations of contributor countries with senior authors
+SELECT contributor, senior, COUNT(DISTINCT article)
+FROM (
+	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	LEFT JOIN (
+		SELECT aa.article, c.name AS country
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE aa.id IN ( --- only show entry for senior author on each paper
+			SELECT MAX(id)
+			FROM prod.article_authors
+			GROUP BY article
+		) AND ---exclude the senior-author papers from contributor countries
+		c.alpha2 NOT IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	) AS seniors ON aa.article=seniors.article
+	WHERE aa.article IN ( --- only show international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM prod.article_authors aa
+			INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN prod.institutions i ON ai.institution=i.id
+			INNER JOIN prod.countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+			ORDER BY countrycount DESC
+		) AS countrz
+		WHERE countrycount >= 2
+	) AND aa.id IN ( --- list all entries for authors from contributor countries
+		SELECT aa.id
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE c.alpha2 IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	)
+) AS intntl
+WHERE senior IS NOT NULL
+GROUP BY 1,2
+
+--- Senior-author count of UNIQUE papers featuring contributor countries
+SELECT senior, COUNT(DISTINCT article)
+FROM (
+	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	LEFT JOIN (
+		SELECT aa.article, c.name AS country
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE aa.id IN ( --- only show entry for senior author on each paper
+			SELECT MAX(id)
+			FROM prod.article_authors
+			GROUP BY article
+		) AND ---exclude the senior-author papers from contributor countries
+		c.alpha2 NOT IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	) AS seniors ON aa.article=seniors.article
+	WHERE aa.article IN ( --- only show international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM prod.article_authors aa
+			INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN prod.institutions i ON ai.institution=i.id
+			INNER JOIN prod.countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+			ORDER BY countrycount DESC
+		) AS countrz
+		WHERE countrycount >= 2
+	) AND aa.id IN ( --- list all entries for authors from contributor countries
+		SELECT aa.id
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE c.alpha2 IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	)
+) AS intntl
+WHERE senior IS NOT NULL
+GROUP BY 1
+ORDER BY 2 DESC
+
+--- Downloads per paper
+SELECT aa.article, EXTRACT(year FROM aa.observed) AS year,
+	dloads.downloads,
+	seniors.name AS country,
+    COUNT(DISTINCT c.name) AS countries,
+    COUNT(DISTINCT aa.id) AS authors
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+INNER JOIN (
+	SELECT article, SUM(pdf) AS downloads
+	FROM prod.article_traffic
+	GROUP BY 1
+) AS dloads ON aa.article=dloads.article
+INNER JOIN (
+	SELECT c.name, aa.article
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+) AS seniors ON seniors.article=aa.article
+GROUP BY 1,2,3,4
+ORDER BY dloads.downloads DESC
+
+--- published preprints from before 2019
+SELECT c.name, COUNT(aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+INNER JOIN prod.publications p ON aa.article=p.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+) AND
+EXTRACT(year FROM aa.observed) < 2019 
+GROUP BY c.name
+ORDER BY preprints DESC
+
+--- publication rate by number of authors
+SELECT countries, SUM(
+	CASE WHEN doi IS NULL
+	THEN 0
+	ELSE 1
+	END
+) AS published,
+COUNT(DISTINCT article) AS total
+FROM (
+	SELECT aa.article, EXTRACT(year FROM aa.observed) AS year, p.doi,
+		COUNT(DISTINCT c.name) AS countries,
+		COUNT(DISTINCT aa.id) AS authors
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	LEFT JOIN prod.publications p ON aa.article=p.article
+	GROUP BY 1,2,3
+	ORDER BY countries DESC
+) AS articlecounts
+GROUP BY 1
+ORDER BY 1 DESC
+
+--- publication rate for international papers, by country
+SELECT totals.country, totals.total, published.published
+FROM (
+    SELECT c.name AS country, COUNT(aa.article) AS total
+    FROM prod.article_authors aa
+    INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN prod.institutions i ON ai.institution=i.id
+    INNER JOIN prod.countries c ON i.country=c.alpha2
+    WHERE aa.id IN (
+        SELECT MAX(id)
+        FROM prod.article_authors
+        GROUP BY article
+    ) AND aa.article IN (
+        SELECT DISTINCT article
+        FROM (
+            SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+            FROM prod.article_authors aa
+            INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+            INNER JOIN prod.institutions i ON ai.institution=i.id
+            INNER JOIN prod.countries c ON i.country=c.alpha2
+            WHERE i.id > 0
+            GROUP BY aa.article
+            ORDER BY countrycount DESC
+        ) AS countrz
+        WHERE countrycount >= 2
+    )
+    GROUP BY c.name
+    ORDER BY total DESC
+) AS totals
+INNER JOIN (
+    SELECT c.name AS country, COUNT(aa.article) AS published
+    FROM prod.article_authors aa
+    INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN prod.institutions i ON ai.institution=i.id
+    INNER JOIN prod.countries c ON i.country=c.alpha2
+    INNER JOIN prod.publications p ON aa.article=p.article
+    WHERE aa.id IN (
+        SELECT MAX(id)
+        FROM prod.article_authors
+        GROUP BY article
+    ) AND aa.article IN (
+        SELECT DISTINCT article
+        FROM (
+            SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+            FROM prod.article_authors aa
+            INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+            INNER JOIN prod.institutions i ON ai.institution=i.id
+            INNER JOIN prod.countries c ON i.country=c.alpha2
+            WHERE i.id > 0
+            GROUP BY aa.article
+            ORDER BY countrycount DESC
+        ) AS countrz
+        WHERE countrycount >= 2
+    )
+    GROUP BY c.name
+    ORDER BY published DESC
+) AS published ON totals.country=published.country
+ORDER BY 3 DESC, 2 DESC
+
+
+--- journal/country relationships in publications
+SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+INNER JOIN prod.publications p ON aa.article=p.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+)
+GROUP BY 1,2
+ORDER BY 1,3 DESC
+
+--- journal/institution relationships
+SELECT published.institution, published.journal, published.total AS published, totals.total AS institution_total,
+	(published.total / totals.total::decimal) AS i_proportion,
+	journaltotal.total AS journal_total, (published.total / journaltotal.total::decimal) AS j_proportion
+FROM (
+	SELECT i.name AS institution, p.journal, COUNT(aa.article) AS total
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.publications p ON aa.article=p.article
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+	GROUP BY 1,2
+) AS published
+LEFT JOIN (
+	SELECT i.name AS institution, COUNT(aa.article) AS total
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+	GROUP BY 1
+) AS totals ON published.institution=totals.institution
+LEFT JOIN (
+	SELECT p.journal, COUNT(aa.article) AS total
+	FROM prod.article_authors aa
+	INNER JOIN prod.publications p ON aa.article=p.article
+	GROUP BY 1
+) AS journaltotal ON published.journal=journaltotal.journal
+
+
+--- journals per institution
+SELECT published.institution, published.total AS preprints, journalcounts.jcount AS journals
+FROM (
+	SELECT i.name AS institution, COUNT(aa.article) AS total
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.publications p ON aa.article=p.article
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+	GROUP BY 1
+) AS published
+INNER JOIN (
+	SELECT i.name AS institution, COUNT(DISTINCT p.journal) AS jcount
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.publications p ON aa.article=p.article
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+	GROUP BY 1
+) AS journalcounts ON journalcounts.institution=published.institution
 
 --- STATEMENTS IN PAPER
 
@@ -434,45 +858,30 @@ WHERE aa.article IN ( --- only show papers with at least one author from country
 )
 ORDER BY aa.id ASC
 
---- senior author of papers co-authored with contributor countries
-SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
-FROM prod.article_authors aa
-INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN prod.institutions i ON ai.institution=i.id
-INNER JOIN prod.countries c ON i.country=c.alpha2
-LEFT JOIN (
-	SELECT aa.article, c.name AS country
-	FROM prod.article_authors aa
-	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN prod.institutions i ON ai.institution=i.id
-	INNER JOIN prod.countries c ON i.country=c.alpha2
-	WHERE aa.id IN ( --- only show entry for senior author on each paper
-		SELECT MAX(id)
-		FROM prod.article_authors
-		GROUP BY article
+--- Looking for authors shared across publications published in a
+--- single journal listing senior authors from a single university
+SELECT name, COUNT(DISTINCT article)
+FROM (
+	SELECT *
+	FROM prod.article_authors
+	WHERE article IN (
+		SELECT aa.article
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.publications p ON aa.article=p.article
+		WHERE aa.id IN (
+			SELECT MAX(id)
+			FROM prod.article_authors
+			GROUP BY article
+		)
+		AND i.name='University of Bristol'
+		AND p.journal='International Journal of Epidemiology'
 	)
-) AS seniors ON aa.article=seniors.article
-WHERE aa.article IN ( --- only show international papers
-    SELECT DISTINCT article
-    FROM (
-        SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
-        FROM prod.article_authors aa
-        INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-        INNER JOIN prod.institutions i ON ai.institution=i.id
-        INNER JOIN prod.countries c ON i.country=c.alpha2
-        WHERE i.id > 0
-        GROUP BY aa.article
-        ORDER BY countrycount DESC
-    ) AS countrz
-    WHERE countrycount >= 2
-) AND aa.id IN ( --- list all entries for authors from contributor countries
-	SELECT aa.id
-	FROM prod.article_authors aa
-	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN prod.institutions i ON ai.institution=i.id
-	INNER JOIN prod.countries c ON i.country=c.alpha2
-	WHERE c.alpha2 IN ('UG', 'BF', 'VN', 'TZ', 'HR', 'AE', 'SK', 'ID', 'TH', 'GR', 'NG', 'KE', 'BD', 'EG', 'EC', 'EE', 'BJ', 'PE', 'TR', 'BO', 'RO', 'MW', 'CZ', 'CO', 'IS', 'BG', 'CR', 'SI', 'PL', 'QA', 'PK', 'IR', 'ET', 'MX', 'LU', 'GH', 'SD', 'CI', 'VE', 'RU', 'IT', 'UY', 'PH')
-)
+	ORDER BY article, id
+) AS asdf
+GROUP BY 1
+ORDER BY 2 DESC
 
 ---------------
 --- AUTHOR INFORMATION
@@ -487,6 +896,27 @@ FROM (
 ) AS author_countries
 WHERE author_countries.countries > 1
 
+--- email suffix for University of California authors with no school
+SELECT SUBSTRING(aa.email, '@.*\.(\w*).edu'), COUNT(aa.id)
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+WHERE ai.institution=10923
+AND aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+)
+GROUP BY 1
+ORDER BY 2 DESC
+
+--- preprints for which multiple authors share one ORCID
+SELECT article, total, uniq, (total-uniq) AS copies
+FROM (
+	SELECT article, COUNT(orcid) AS total, COUNT(DISTINCT orcid) AS uniq
+	FROM prod.article_authors
+	GROUP BY 1
+) AS counts
+ORDER BY 4 DESC
 
 ---SAMPLE SIZE CALCULATION
 --- get random sample of 100 to approximate population error rate:

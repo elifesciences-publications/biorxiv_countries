@@ -10,6 +10,9 @@ WHERE article IN (
 	WHERE name='000bad_data000'
 )
 
+--- Get rid of traffic data after 2019
+DELETE FROM prod.article_traffic WHERE year=2020
+
 --- MRC institutions misattributed to Buddhist center
 UPDATE prod.affiliation_institutions SET institution=4656 WHERE institution=4254;
 

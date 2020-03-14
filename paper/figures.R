@@ -22,6 +22,7 @@ basetheme <- theme(
   axis.text.y = element_text(size=big_fontsize, color = themedarktext),
   axis.title.x = element_text(size=big_fontsize, color = themedarktext),
   axis.title.y = element_text(size=big_fontsize, color = themedarktext),
+  legend.text = element_text(size=big_fontsize, color = themedarktext),
 )
 
 
@@ -68,6 +69,17 @@ add_year_x <- function(plot, labels, yearlabel)
   return(x)
 }
 
+cleanup_countries <- function(matrix) {
+  matrix$country <- as.character(matrix$country)
+  matrix$country[matrix$country=='United States of America'] <- 'United States'
+  matrix$country[matrix$country=='United Kingdom of Great Britain and Northern Ireland'] <- 'United Kingdom'
+  matrix$country[matrix$country=='Korea, Republic of'] <- 'South Korea'
+  matrix$country[matrix$country=='Taiwan, Province of China'] <- 'Taiwan'
+  matrix$country[matrix$country=='Iran (Islamic Republic of),'] <- 'Iran'
+  matrix$country[matrix$country=='Russian Federation'] <- 'Russia'
+  matrix$country <- as.factor(matrix$country)
+  return(matrix)
+}
 
 
 #---------------------------------
@@ -77,7 +89,7 @@ add_year_x <- function(plot, labels, yearlabel)
 data <- read.csv('preprints_country_all.csv', header = TRUE, stringsAsFactors = FALSE)
 colnames(data) <- c('country','value')
 toplot <- joinCountryData2Map(data, joinCode = "ISO2",
-                              nameJoinColumn = "country",  mapResolution = "coarse", verbose=FALSE)
+                              nameJoinColumn = "country",  mapResolution = "coarse", verbose=TRUE)
 
 # chop off antarctica
 toplot <- subset(toplot, continent != "Antarctica")
@@ -125,7 +137,7 @@ time <- ggplot(monthframe, aes(x=month, y=running_total,
     plot.margin = unit(c(1,6,1,1), "lines"), # for right-margin labels
   ) +
   annotation_custom(
-    grob = textGrob(label = "OTHER", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
+    grob = textGrob(label = "UNKNOWN", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.07, ymax = 0.07, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "United States", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
@@ -159,10 +171,8 @@ time$layout$clip[time$layout$name == "panel"] <- "off"
 # PANEL: bar plot, preprints per country
 data <- monthframe[monthframe$month=='2019-12',]
 overview <- read.csv('overview_by_country.csv') %>%
-  select(country,preprints_international_fraction)
-overview$country <- as.character(overview$country)
-overview$country[overview$country=='United States of America'] <- 'United States'
-overview$country[overview$country=='United Kingdom of Great Britain and Northern Ireland'] <- 'United Kingdom'
+  select(country,senior_author_rate_international)
+overview <- cleanup_countries(overview)
 data <- data %>%
   left_join(overview, by=c("country"="country"))
 
@@ -182,14 +192,15 @@ senior <- ggplot(
     legend.position = "none"
   )
 
+data[data$country=='OTHER',]$senior_author_rate_international <- 6994/16941
 seniorrate <- ggplot(
     data=data,
-    aes(x=reorder(country, running_total), y=preprints_international_fraction, fill=country)
+    aes(x=reorder(country, running_total), y=senior_author_rate_international, fill=country)
   ) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
-  coord_flip(ylim=c(0,0.75)) +
-  labs(x = "Country", y = "% of country's preprints, senior author") +
+  coord_flip(ylim=c(0,0.52)) +
+  labs(x = "Country", y = "Senior author rate, international preprints") +
   theme_bw() +
   scale_fill_brewer(palette = 'Set1', guide='legend',
                     aesthetics = c('color','fill')) +
@@ -200,7 +211,7 @@ seniorrate <- ggplot(
     axis.title.y = element_blank()
   )
 
-# Assemble figure 2 with patchwork
+# Assemble figure 1 with patchwork
 
 plot_grid(time,
   plot_grid(senior, seniorrate, nrow=1,ncol=2, rel_widths=c(3,2)),
@@ -276,9 +287,35 @@ papers_per_institution <- ggplot(data_long, aes(x=reorder(name,any_author),y=qty
   theme_bw() +
   scale_fill_brewer(palette = 'Set1', guide='legend',
     aesthetics = c('color','fill')) +
+  basetheme +
   theme(
-    legend.position = 'bottom'
+    #legend.position = 'bottom'
+    legend.position = c(0.75,0.6)
   )
+
+
+
+# NSF FIGURE, DELETE LATER
+e <- read.csv('adjusted_preprints.csv')
+toplot <- rbind(e[1:8,], e[54:61,])
+enthusiasm <- ggplot(data=toplot, aes(x=reorder(country, proportion_ratio), y=proportion_ratio, fill=continent)) +
+  geom_bar(stat="identity") +
+  geom_vline(xintercept=8.5, color='red') +
+  scale_y_continuous(expand=c(0,0)) +
+  coord_flip(ylim=c(0,2.8)) +
+  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set2', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    legend.position = c(0.75,0.3),
+    plot.margin = margin(0,0,0,0)
+  )
+
+(papers_per_institution / enthusiasm) + plot_annotation(tag_levels = 'a')
+# END NSF FIGURE
+
 # PANEL: authors per institution
 data=read.csv('authors_per_institution.csv')
 
@@ -306,20 +343,16 @@ authorcounts <- read.csv('authors_per_paper.csv')
 colnames(authorcounts) <- c('id','year','authors')
 
 harms <- vector("list", 7)
-lower <- vector("list", 7)
-upper <- vector("list", 7)
 means <- vector("list", 7)
-medians <- vector("list", 7)
+meds <- vector("list", 7)
 sds <- vector("list", 7)
 i <- 1
 for(year in seq(2013,2019,1)) {
   calc <- Hmean(authorcounts[authorcounts$year==year,]$authors, conf.level=0.95)
   harms[[i]] <- calc[['mean']]
-  lower[[i]] <- calc[['lwr.ci']]
-  upper[[i]] <- calc[['upr.ci']]
   means[[i]] <- mean(authorcounts[authorcounts$year==year,]$authors)
   sds[[i]] <- sd(authorcounts[authorcounts$year==year,]$authors)
-  medians[[i]] <- median(authorcounts[authorcounts$year==year,]$authors)
+  meds[[i]] <- median(authorcounts[authorcounts$year==year,]$authors)
   i <- i + 1
 }
 averages <- data.frame(
@@ -328,43 +361,28 @@ averages <- data.frame(
   #lower = unlist(lower, use.names=FALSE),
   #upper = unlist(upper),
   mean = unlist(means),
-  median = unlist(medians),
-  sd = unlist(sds)
+  median = unlist(meds)
 )
 
 averages_long <- pivot_longer(averages, -year, names_to="average",values_to="value")
-sd <- averages_long[averages_long$average=='mean',]
-sd$average <- NULL
-sd <- sd %>% inner_join(averages_long[averages_long$average=='sd',], by=c("year"="year"))
-sd$average <- NULL
-colnames(sd) <- c('year','mean','sd')
 
-per_paper <- ggplot(data=averages_long[averages_long$average!='sd',], aes(x=year, y=value, color=average)) +
+per_paper <- ggplot(data=averages_long, aes(x=year, y=value, color=average)) +
   #geom_violin(data=authorcounts, aes(x=year,y=authors,group=year)) + scale_y_continuous(breaks=c(0,1,2,5,10,15,20), limits=c(0,15)) +
   geom_line(size=2) +
   #geom_errorbar(data=sd, aes(x=year, ymin=mean-sd, ymax=mean+sd)) +
   scale_x_continuous(breaks=seq(2013, 2019, 1)) +
-  labs(x='Year', y='Authors per paper') +
+  labs(x='Year', y='Authors per preprint') +
   scale_color_discrete(labels=c('harmonic mean','arithmetic mean','median')) +
   theme_bw() +
   basetheme +
   theme(
-    legend.position = 'bottom',
-    legend.title=element_blank()
+    legend.title=element_blank(),
+    legend.direction='horizontal',
+    legend.position=c(0.55,0.06)
   )
 
-# PANEL: countries per paper histogram
-countries=read.csv('countries_per_paper.csv')
-countrycount <- ggplot(countries, aes(x=countries)) +
-  geom_histogram(bins=30) +
-  scale_y_log10(
-    labels = scales::number_format(accuracy = 1)
-  ) +
-  labs(x="Countries in author list", y="Preprints") +
-  theme_bw() +
-  basetheme
-
 # PANEL: countries per paper over time
+countries=read.csv('countries_per_paper.csv')
 means <- vector("list", 7)
 sds <- vector("list", 7)
 i <- 1
@@ -380,20 +398,41 @@ averages <- data.frame(
 )
 
 countries_time <- ggplot() +
-  geom_errorbar(data=averages, aes(x=year, ymin=mean-sd, ymax=mean+sd)) +
+  geom_errorbar(data=averages, aes(x=year, ymin=mean-(sd/2), ymax=mean+(sd/2))) +
   geom_line(data=averages, aes(x=year, y=mean), color='red', size=2) +
-  scale_x_continuous(breaks=seq(2013, 2019, 1)) +
-  labs(x='Year', y='Countries per paper') +
+  scale_x_continuous(breaks=seq(2013, 2019, 2)) +
+  labs(x='Year', y='Countries per preprint') +
+  theme_bw() +
+  basetheme
+
+# PANEL: countries per paper histogram
+countrycount <- ggplot(countries, aes(x=countries)) +
+  geom_histogram(bins=30) +
+  scale_y_log10(
+    labels = scales::number_format(accuracy = 1, big.mark=',')
+  ) +
+  labs(x="Countries in author list", y="Preprints") +
   theme_bw() +
   basetheme
 
 # compile figure
-compiled <- per_paper / (countries_time + countrycount)
+bottom <- (countries_time + countrycount) #+ plot_layout(widths=c(3,2))
+compiled <- per_paper / bottom
 compiled + plot_annotation(tag_levels = 'a')
 
 
 # FIGURE: senior authors by country
 data=read.csv('overview_by_country.csv')
+
+# PANEL: Total intl preprints against proportion of international preprints w senior authorship
+a <- ggplot(data=data, aes(x=international_papers_any_author, y=seniorinter)) +
+  geom_point() +
+  scale_x_log10() +
+  theme_bw() +
+  basetheme +
+  labs(x='International preprints, any author', y='% international senior authorship') +
+  geom_smooth(method='lm', formula= y~x, se=FALSE)
+
 
 # PANEL: International senior authorship compared to total international papers
 
@@ -405,22 +444,12 @@ data$prop_international <- data$international_papers_any_author / data$preprints
 data <- data[data$international_papers_any_author >= 30,]
 data <- data[!is.na(data$seniorinter),]
 
-a <- ggplot(data=data, aes(x=prop_international, y=seniorinter)) +
+b <- ggplot(data=data, aes(x=prop_international, y=seniorinter)) +
   geom_point() +
   geom_smooth(method='lm', formula= y~x, se=FALSE) +
   theme_bw() +
   basetheme +
   labs(x='% of papers international', y='% international senior authorship')
-
-
-# PANEL: Total intl preprints against proportion of international preprints w senior authorship
-b <- ggplot(data=data, aes(x=international_papers_any_author, y=seniorinter)) +
-  geom_point() +
-  scale_x_log10() +
-  theme_bw() +
-  basetheme +
-  labs(x='International preprints, any author', y='% international senior authorship') +
-  geom_smooth(method='lm', formula= y~x, se=FALSE)
 
 # PANEL: contributor countries, by senior author
 data=read.csv('contributor_country_senior_counts.csv')
@@ -433,21 +462,20 @@ data$senior <- as.factor(data$senior)
 data$contributor <- as.character(data$contributor)
 data$contributor[data$contributor=='Tanzania, United Republic of'] <-'Tanzania'
 data$contributor[data$contributor=='Bolivia (Plurinational State of),'] <-'Bolivia'
+data$contributor[data$contributor=='Viet Nam'] <-'Vietnam'
 data$contributor <- as.factor(data$contributor)
 
 tokeep <- aggregate(data$count, by=list(countries=data$senior), FUN=sum)
 
-# only include senior countries with > 9 preprints listed
-toplot <- data[data$senior %in% tokeep[tokeep$x > 35,]$countries,]
-toplot$senior <- as.factor(toplot$senior)
-#c <- 
-ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
+# only include senior countries with > 25 preprints listed
+toplot <- data[data$senior %in% tokeep[tokeep$x > 25,]$countries,]
+c <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
   geom_alluvium(aes(fill=senior), width = 1/12) +
   geom_stratum(width = 1/6, color = "grey") +
   geom_label(stat = "stratum", infer.label = TRUE) +
-  #ggrepel::geom_text_repel(aes(label = as.character(country)), stat = "stratum", size = 4, direction = "y", nudge_x = -.5) +
+  #ggrepel::geom_text_repel(label='stratum', stat = "stratum", size = 4, direction = "x", nudge_x = -.5) +
   scale_fill_brewer(palette = 'Set1', aesthetics = c('fill')) +
-  scale_x_continuous(expand=c(0,0)) +
+  #scale_x_continuous(expand=c(0,0)) +
   scale_y_continuous(expand=c(0,0)) +
   theme_void() +
   basetheme +
@@ -458,10 +486,180 @@ ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
     axis.title.y=element_blank(),
   )
 
-compiled <- (a / b)
+compiled <- (b / a)
 compiled <- compiled | c
 compiled <- compiled + plot_layout(widths=c(1,2))
 compiled + plot_annotation(tag_levels = 'a')
+
+
+# FIGURE: OUTCOMES
+# panel: downloads per paper
+dloads <- read.csv('downloads_per_paper.csv')
+dloads <- dloads %>% select(year,country,downloads)
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+toplot <- dloads[dloads$country %in% tokeep$country,] %>% select(country,downloads)
+toplot <- cleanup_countries(toplot)
+
+dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downloads)) +
+  geom_boxplot(outlier.shape = NA, coef=0) +
+  coord_flip(ylim=c(0, 700)) +
+  geom_hline(yintercept=median(dloads$downloads), size=1, color='red') +
+  labs(y='Downloads per preprint', x='Country') +
+  theme_bw() +
+  basetheme
+
+# calculating median downloads per country
+medians <- aggregate(toplot$downloads, by=list(country=toplot$country), FUN=median)
+colnames(medians) <- c('country','downloads')
+pubs <- read.csv('overview_by_country.csv')
+pubs <- cleanup_countries(pubs)
+pubs$pubrate <- pubs$published_pre2019 / pubs$senior_pre2019
+medians <- medians %>% inner_join(pubs, by=c("country"="country")) %>%
+  select(country,downloads,pubrate)
+cor.test(medians$downloads, medians$pubrate, method='spearman')
+
+pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
+  geom_point(size=3) +
+  geom_smooth(method='lm', se=FALSE) +
+  labs(x='Downloads per preprint', y='Publication rate') +
+  theme_bw() +
+  basetheme
+
+# PANEL: downloads by enthusiasm
+dloads <- read.csv('downloads_per_paper.csv')
+enthusiasm <- read.csv('adjusted_preprints.csv')
+medians <- ddply(dloads, .(country), summarise, med = median(downloads))
+data <- medians %>% inner_join(enthusiasm, by=c("country"="country")) %>%
+  select(country, med, proportion_ratio)
+colnames(data) <- c('country','downloads','enthusiasm')
+cor.test(data$downloads, data$enthusiasm)
+
+dload_enthusiasm <- ggplot(data, aes(x=enthusiasm, y=downloads)) +
+  geom_point(size=4) +
+  geom_smooth(method='lm', se=FALSE) +
+  labs(x='bioRxiv enthusiasm', y='Downloads per preprint') +
+  theme_bw() +
+  basetheme
+
+# panel: publication rate
+data <- read.csv('overview_by_country.csv')
+data$pubrate <- data$published_pre2019 / data$senior_pre2019
+tokeep <- data[data$senior_pre2019 >= 50,] %>% select(country,pubrate)
+tokeep <- cleanup_countries(tokeep)
+toplot <- rbind(head(tokeep,10), tail(tokeep,10))
+pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=sum(data$published_pre2019)/sum(data$senior_pre2019), color='red', size=1) + # overall
+  labs(y='Proportion of preprints published', x='Country') +
+  coord_flip() +
+  theme_bw() +
+  basetheme
+
+# using cowplot for this one because panels b and c are different widths
+dloadplot | (dload_enthusiasm / pubdload) | pubrateplot
+plot_grid(dloadplot,
+  plot_grid(dload_enthusiasm, pubrateplot,nrow=2,ncol=1,axis='r', labels=c('(b)','(c)')),
+  pubdload,
+  ncol=3,nrow=1,axis='tb',
+  labels=c('(a)','','(d)'))
+
+# domestic vs international preprint publication rate
+data <- read.csv('international_publications_per_country.csv')
+tokeep <- data[data$international_total >= 50,]
+tokeep <- cleanup_countries(tokeep)
+ggplot(tokeep, aes(x=domestic_proportion, y=international_proportion)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color='red') +
+  labs(x='Domestic publication rate', y='International publication rate') +
+  theme_bw() +
+  basetheme
+
+# COUNTRY SIMILARITY BY JOURNAL PUBLICATIONS
+library(ggfortify)
+library(vegan)
+
+data <- read.csv('publication_journal_country.csv')
+# minimum published preprints, country
+country_tokeep <- aggregate(data$preprints, by=list(country=data$country), FUN=sum)
+country_tokeep <- country_tokeep[country_tokeep$x >= 80,]
+toplot <- data[data$country %in% country_tokeep$country,]
+# minimum published preprints, journal
+journal_tokeep <- aggregate(toplot$preprints, by=list(journal=toplot$journal), FUN=sum)
+journal_tokeep <- journal_tokeep[journal_tokeep$x >= 15,]
+
+
+toplot <- toplot[toplot$journal %in% journal_tokeep$journal,]
+toplot <- cleanup_countries(toplot)
+#ggplot(toplot, aes(country, journal, fill=preprints)) + 
+#  geom_tile(scale="row")
+
+wide <- pivot_wider(toplot, names_from=c('journal'),
+    values_from=c('preprints'))
+countries <- wide$country
+wide$country <- NULL
+wide[is.na(wide)] <- 0
+wide <- as.matrix(wide)
+rownames(wide) <- countries
+prop <- prop.table(wide,margin=1)
+
+
+#autoplot(prop) # heatmap with journals
+
+#distance <- as.matrix(dist(prop, method='euclidean'))
+#colnames(distance) <- countries
+#rownames(distance) <- countries
+#autoplot(cmdscale(distance, eig = TRUE), label = TRUE) # PCOA
+#plot(hclust(as.dist(prop), method='complete')) # dendrogram
+
+# using bray-curtis:
+x <- vegdist(prop, method="bray")
+autoplot(cmdscale(x, eig = TRUE), label = TRUE)
+plot(hclust(as.dist(x)))
+autoplot(x) # heatmap
+
+
+
+# Journal/institution relationships
+data <- read.csv('publication_journal_institution.csv')
+data <- data[data$institution!='UNKNOWN',]
+# minimum published preprints, country
+institution_tokeep <- data[data$institution_total >= 10,]
+toplot <- data[data$institution %in% institution_tokeep$institution,]
+
+calc <- toplot
+calc$journal_total <- as.numeric(as.character(calc$journal_total))
+calc$i_proportion <- calc$published / calc$institution_total
+calc$j_proportion <- calc$journal_total / 32431
+calc$diff <- calc$i_proportion / calc$j_proportion
+calc <- calc[calc$published > 5,]
+# minimum published preprints, journal
+journal_tokeep <- aggregate(toplot$published, by=list(journal=toplot$journal), FUN=sum)
+journal_tokeep <- journal_tokeep[journal_tokeep$x >= 30,]
+toplot <- toplot[toplot$journal %in% journal_tokeep$journal,]
+wide <- pivot_wider(toplot, names_from=c('journal'),
+                    values_from=c('published'))
+institutions <- wide$institution
+wide$institution <- NULL
+wide[is.na(wide)] <- 0
+wide <- as.matrix(wide)
+rownames(wide) <- institutions
+prop <- prop.table(wide,margin=1)
+x <- vegdist(prop, method="bray")
+autoplot(cmdscale(x, eig = TRUE), label = TRUE)
+plot(hclust(as.dist(x)))
+
+
+# preprints per journal, institution level
+data <- read.csv('preprints_per_journal_institution.csv')
+data <- data[data$institution!='UNKNOWN',]
+# minimum published preprints, country
+institution_tokeep <- data[data$preprints >= 10,]
+toplot <- data[data$institution %in% institution_tokeep$institution,]
+toplot$prop <- toplot$preprints / toplot$journals
+
 
 # STATEMENTS FROM PAPER
 
@@ -481,11 +679,31 @@ c <- ggplot(data=data, aes(x=international_papers_any_author, y=prop_internation
   theme_bw() +
   labs(x='International preprints, any author', y='% papers international') +
   geom_smooth(method='lm', formula= y~x, se=FALSE)
+
 cor.test(data$prop_international, data$seniorinter, method="spearman")
 cor.test(data$seniorinter, data$international_papers_any_author, method="spearman")
 cor.test(data$international_papers_any_author, data$prop_international, method="spearman")
 
+# relationship between downloads and total papers:
+library(plyr)
+dloads <- read.csv('downloads_per_paper.csv')
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+# only include senior countries with > 9 preprints listed
+toplot <- dloads[dloads$country %in% tokeep[tokeep$x >= 70,]$country,]
+medians <- ddply(toplot, .(country), summarise, med = median(downloads))
+data <- medians %>% inner_join(tokeep, by=c("country"="country"))
+colnames(data) <- c('country','downloads','papers')
+cor.test(data$downloads, data$papers)
 
+# relationship between publication rate and DOI assignment
+doi <- read.csv('doi_rate.csv')
+cor.test(doi$doi_rate, doi$pub_rate, method='pearson')
+
+# downloads for international vs domestic preprints
+data=read.csv('downloads_per_paper.csv')
+mean(data[data$countries==1,]$downloads)
+mean(data[data$countries>1,]$downloads)
 
 # SUPPLEMENTAL FIGURES
 # Authors per affiliation
@@ -508,7 +726,7 @@ ggplot(authorcounts, aes(x=authors)) +
   #geom_vline(data=averages, aes(xintercept=mean, color='yellow')) +
   facet_grid(rows=vars(year), scales='free_y') +
   theme_bw() +
-  labs(x='Authors per paper',y='Papers')
+  labs(x='Authors per preprint',y='Papers')
 
 # PANEL: countries per paper over time
 countrycounts <- read.csv('countries_per_author.csv')
