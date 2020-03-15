@@ -316,26 +316,6 @@ enthusiasm <- ggplot(data=toplot, aes(x=reorder(country, proportion_ratio), y=pr
 (papers_per_institution / enthusiasm) + plot_annotation(tag_levels = 'a')
 # END NSF FIGURE
 
-# PANEL: authors per institution
-data=read.csv('authors_per_institution.csv')
-
-authors_per_institution <- ggplot(data[2:16,], aes(x=reorder(name,total_preprints),y=authors,fill=continent)) +
-  geom_bar(stat='identity') +
-  coord_flip() +
-  labs(x='Institution',y='Authors') +
-  theme_bw() +
-  scale_fill_brewer(palette = 'Set1', guide='legend',
-      aesthetics = c('color','fill')) +
-  theme(
-    legend.position = 'bottom',
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank()
-  )
-
-# assemble figure
-plot_grid(papers_per_institution, authors_per_institution)
-
-
 # FIGURE: Authors
 
 # panel: Authors per paper
