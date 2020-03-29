@@ -356,3 +356,10 @@ WHERE id IN (
 	WHERE total=0
 )
 ---
+
+-------
+---ALL EDITS BELOW THIS LINE WERE MADE AFTER THE ACCURACY CALCULATIONS
+-------
+
+---Authors from French CNRS misattributed to Lebanese National Council for Scientific Research
+UPDATE prod.affiliation_institutions SET institution=1234 WHERE institution=10896;

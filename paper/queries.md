@@ -84,9 +84,38 @@ ORDER BY month ASC, country ASC
 
 See Fig. 1a.
 
-### 1d: Senior author rate, international preprints
+### 1d: Preprints per country total, any author
 
-See Fig. *tk.
+Unique preprints including at least one author from one of the countries in the "OTHER" category:
+```sql
+SELECT COUNT(DISTINCT aa.article)
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+WHERE c.name NOT IN (
+    SELECT name FROM (
+        SELECT countries.name, COUNT(aa.article) AS preprints
+        FROM prod.article_authors aa
+        INNER JOIN prod.affiliation_institutions ai
+            ON ai.affiliation=aa.affiliation
+        INNER JOIN prod.institutions
+            ON institutions.id=ai.institution
+        INNER JOIN prod.countries
+            ON institutions.country=countries.alpha2
+        WHERE aa.id IN (
+            SELECT id FROM (
+                SELECT article, MAX(id) AS id
+                FROM prod.article_authors
+                GROUP BY 1
+            ) AS seniorauthors
+        )
+        GROUP BY 1
+        ORDER BY 2 DESC
+    ) AS preprints
+    LIMIT 8
+)
+```
 
 International collaborations by senior author, countries in "other" category:
 
