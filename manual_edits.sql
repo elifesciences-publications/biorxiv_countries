@@ -363,3 +363,9 @@ WHERE id IN (
 
 ---Authors from French CNRS misattributed to Lebanese National Council for Scientific Research
 UPDATE prod.affiliation_institutions SET institution=1234 WHERE institution=10896;
+
+---Lots of misattributed affiliations to the Sudanese Academy of Engineering Sciences
+UPDATE prod.affiliation_institutions SET institution=0 WHERE institution=3173;
+
+---Confusion between Western Caspian University and Western University
+UPDATE prod.affiliation_institutions SET institution=558 WHERE institution=1977 AND affiliation LIKE '%Western University%';

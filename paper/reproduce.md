@@ -19,6 +19,7 @@ library(grid)
 library(RColorBrewer)# for pretty
 library(tidyr) # for gather()
 library(ggalluvial) # for alluvial plot
+library(ggrepel) # for the labeled scatter plot
 
 library(dplyr) # for top_n
 library(DescTools) # for harmonic mean
@@ -92,8 +93,7 @@ cleanup_countries <- function(matrix) {
 }
 ```
 
-## 2. Results
-### 2.1 Preprint origins
+## Results: Preprint origins
 Total preprints in analysis:
 ```sql
 SELECT COUNT(DISTINCT article) FROM article_authors;
@@ -113,7 +113,7 @@ FROM (
 ) AS anyauthor
 LEFT JOIN (
 	SELECT c.name AS country, COUNT(aa.article) AS preprints
-	FROM prod.article_authors aa
+	FROM article_authors aa
 	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
 	INNER JOIN institutions i ON ai.institution=i.id
 	INNER JOIN countries c ON i.country=c.alpha2
@@ -175,16 +175,16 @@ WITH vars AS (
     SELECT 8::integer AS maxcountries
 ), senior_authors AS (
     SELECT article, MAX(id) AS id
-    FROM prod.article_authors
+    FROM article_authors
     GROUP BY 1
 ), top_countries AS (
     SELECT countries.name, COUNT(aa.article) AS preprints
-    FROM prod.article_authors aa
-    INNER JOIN prod.affiliation_institutions ai
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai
         ON ai.affiliation=aa.affiliation
-    INNER JOIN prod.institutions
+    INNER JOIN institutions
         ON institutions.id=ai.institution
-    INNER JOIN prod.countries
+    INNER JOIN countries
         ON institutions.country=countries.alpha2
     WHERE aa.id IN (SELECT id FROM senior_authors)
     GROUP BY 1
@@ -193,12 +193,12 @@ WITH vars AS (
     SELECT EXTRACT(YEAR FROM aa.observed)||'-'||lpad(EXTRACT(MONTH FROM aa.observed)::text, 2, '0') AS month,
     countries.name AS country,
     COUNT(aa.article) AS month_total
-    FROM prod.article_authors aa
-    INNER JOIN prod.affiliation_institutions ai
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai
         ON ai.affiliation=aa.affiliation
-    INNER JOIN prod.institutions
+    INNER JOIN institutions
         ON institutions.id=ai.institution
-    INNER JOIN prod.countries
+    INNER JOIN countries
         ON countries.alpha2=institutions.country
     WHERE aa.id IN (SELECT id FROM senior_authors)
     GROUP BY month, countries.name
@@ -312,24 +312,24 @@ Uses the same data as Table 1, with an additional "OTHER" total pulled from this
 
 ```sql
 SELECT COUNT(DISTINCT aa.article)
-FROM prod.article_authors aa
-INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN prod.institutions i ON ai.institution=i.id
-INNER JOIN prod.countries c ON i.country=c.alpha2
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
 WHERE c.name NOT IN (
     SELECT name FROM (
         SELECT countries.name, COUNT(aa.article) AS preprints
-        FROM prod.article_authors aa
-        INNER JOIN prod.affiliation_institutions ai
+        FROM article_authors aa
+        INNER JOIN affiliation_institutions ai
             ON ai.affiliation=aa.affiliation
-        INNER JOIN prod.institutions
+        INNER JOIN institutions
             ON institutions.id=ai.institution
-        INNER JOIN prod.countries
+        INNER JOIN countries
             ON institutions.country=countries.alpha2
         WHERE aa.id IN (
             SELECT id FROM (
                 SELECT article, MAX(id) AS id
-                FROM prod.article_authors
+                FROM article_authors
                 GROUP BY 1
             ) AS seniorauthors
         )
@@ -376,3 +376,277 @@ plot_grid(time,
   ),
   ncol=1, nrow=2, rel_heights=c(3,2), labels=c('b'))
 ```
+
+
+### Figure 2: Preprint enthusiasm
+
+Data for all panels in this figure are available in **Supplementary Table 2**, which was compiled by adding the senior-author totals from Supplementary Table 1 to data scraped from Scimago. Loading the dataset and calculating the proportions:
+```r
+data <- read.csv('supp_table02.csv')
+data <- data[data$senior_author_preprints>50,]
+data <- cleanup_countries(data)
+data$country <- as.character(data$country) 
+data[data$country=='United States',]$country <- 'USA'
+data[data$country=='United Kingdom',]$country <- 'UK'
+data$country <- as.factor(data$country)
+
+data$prop_citable <- data$citable_total / sum(data$citable_total)
+data$prop_preprint <- data$senior_author_preprints / 67885
+data$enthusiasm <- data$prop_preprint / data$prop_citable
+# NOTE: We don't use a live sum of the preprints because this table
+# excludes 9000+ "UNKNOWN" preprints
+```
+
+#### Figure 2a: Preprint enthusiasm by total citable documents
+```r
+scatter <- ggplot(data) +
+  geom_point(aes(x=citable_total, y=enthusiasm)) +
+  geom_hline(yintercept=1, color='red', size=0.2) +
+  geom_text_repel(
+    aes(x=citable_total, y=enthusiasm, label=country),
+    size=4,
+    segment.size = 0.5,
+    segment.color = "grey50",
+    point.padding = 0.2,
+    max.iter = 5000
+  ) +
+  scale_x_log10(labels=comma) +
+  scale_size_continuous(name='Preprints,\nsenior author', labels=comma) +
+  labs(x='Citable documents', y='bioRxiv enthusiasm') +
+  theme_bw() +
+  basetheme
+```
+
+#### Figure 2b: Top preprint enthusiasm
+```r
+enthusiasm_top <- ggplot(data=data[1:10,], aes(x=reorder(country, enthusiasm), y=enthusiasm)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(expand=c(0,0)) +
+  coord_flip(ylim=c(0,2.8)) +
+  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set2', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    plot.margin = margin(0,0,0,0)
+  )
+```
+
+#### Figure 2c: Bottom preprint enthusiasm
+```r
+enthusiasm_bottom <- ggplot(data=data[35:44,], aes(x=reorder(country, enthusiasm), y=enthusiasm)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(expand=c(0,0)) +
+  coord_flip(ylim=c(0,2.8)) +
+  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set2', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    plot.margin = margin(0,0,0,0)
+  )
+```
+
+#### Compiling Figure 2
+layout <- '
+AAAAAB
+AAAAAB
+AAAAAB
+AAAAA#
+AAAAAC
+AAAAAC
+AAAAAC
+'
+wrap_plots(A=scatter,
+  B=enthusiasm_top, C=enthusiasm_bottom,
+  design=layout) + plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
+
+
+## Results: Collaboration
+
+### Figure 3: Collaborators per paper
+Both panels use data from the same query, saved as `collaborators_per_paper.csv`:
+
+```sql
+SELECT aa.article, EXTRACT(month FROM aa.observed) AS month,
+	EXTRACT(year FROM aa.observed) AS year,
+    COUNT(DISTINCT c.name) AS countries,
+    COUNT(DISTINCT aa.id) AS authors
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+GROUP BY 1,2,3
+ORDER BY countries DESC, authors DESC
+```
+
+#### Figure 3a: Authors per paper
+```r
+counts <- read.csv('collaborators_per_paper.csv')
+counts$time <- ((12*(counts$year - 2013))+counts$month)-10
+
+authormeans = data.frame(
+  time=integer(), mean=double(), moving=double()
+)
+for(year in 2013:2019) {
+  for(month in 1:12) {
+    timestamp <- ((12*(year - 2013))+month)-10
+    authormeans <- rbind(authormeans,
+                         c(timestamp,
+                           Hmean(counts[counts$time==timestamp,]$authors),
+                           Hmean(counts[counts$time<=timestamp,]$authors)
+                         )
+    )
+  }
+}
+colnames(authormeans) <- c('time','mean', 'moving')
+
+monthly_authors <- ggplot(authormeans, aes(x=time, y=mean)) +
+  geom_point() +
+  geom_line(aes(x=time, y=moving), color='blue', size=1) +
+  scale_x_continuous(
+    limits=c(1,74),
+    expand=c(0.01, 0.01),
+    breaks = NULL
+  ) +
+  scale_y_continuous(breaks=seq(2.5, 5, 0.5)) +
+  labs(x='Month', y='Authors per preprint (harmonic mean)') +
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_blank(),
+    axis.title.x=element_blank(),
+    plot.margin = unit(c(1,1,1,1), "lines"),
+  )
+
+monthly_authors <- add_year_x(monthly_authors, TRUE, 2.17)
+monthly_authors <- ggplot_gtable(ggplot_build(monthly_authors))
+monthly_authors$layout$clip[monthly_authors$layout$name == "panel"] <- "off"
+```
+
+Correlation between monthly mean authors per paper and time:
+```r
+cor.test(authormeans$time, authormeans$mean, method='pearson')
+```
+
+#### Figure 3b: Countries per paper
+```r
+countrymeans = data.frame(
+  time=integer(), mean=double(), moving=double()
+)
+for(year in 2013:2019) {
+  for(month in 1:12) {
+    timestamp <- ((12*(year - 2013))+month-10)
+    countrymeans <- rbind(countrymeans,
+                   c(timestamp,
+                     mean(counts[counts$time==timestamp,]$countries),
+                     mean(counts[counts$time<=timestamp,]$countries)
+                   )
+    )
+  }
+}
+colnames(countrymeans) <- c('time','mean', 'moving')
+
+monthly_country <- ggplot(countrymeans) +
+  geom_point(aes(x=time, y=mean)) +
+  geom_line(aes(x=time, y=moving), color='blue', size=1) +
+  scale_x_continuous(
+    limits=c(1,74),
+    expand=c(0.01, 0.01),
+    breaks = NULL
+  ) +
+  #geom_smooth(se=FALSE, method="lm", size=0.75) +
+  labs(x='Month', y='Countries per preprint (arithmetic mean)') +
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_blank(),
+    axis.title.x=element_text(vjust=-4),
+    plot.margin = unit(c(1,1,1,1), "lines"),
+  )
+
+monthly_country <- add_year_x(monthly_country, TRUE, 1.408)
+monthly_country <- ggplot_gtable(ggplot_build(monthly_country))
+monthly_country$layout$clip[monthly_country$layout$name == "panel"] <- "off"
+```
+
+#### Compiling Figure 3
+```r
+plot_grid(monthly_authors, monthly_country, nrow=2, ncol=1, align='v')
+```
+
+
+
+### Table 2: Contributor countries
+Table 2 is a subset of data from the following query, which is available in full as **Supplementary Table 3**:
+
+```sql
+SELECT totals.country, COALESCE(seniorauthor.preprints,0) AS intl_senior_author,
+  COALESCE(anyauthor.preprints,0) AS intl_any_author,
+  totals.preprints AS all_any_author
+FROM (
+	SELECT c.name AS country, COUNT(DISTINCT aa.article) AS preprints
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
+	GROUP BY 1
+) AS totals
+LEFT JOIN (
+	SELECT c.name AS country, COUNT(DISTINCT aa.article) AS preprints
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
+	WHERE aa.article IN ( --- only include international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM article_authors aa
+			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN institutions i ON ai.institution=i.id
+			INNER JOIN countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+		) AS countrz
+		WHERE countrycount >= 2
+	)
+	GROUP BY c.name
+) AS anyauthor ON totals.country=anyauthor.country
+LEFT JOIN (
+	SELECT c.name AS country, COUNT(aa.article) AS preprints
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
+	WHERE aa.id IN ( --- only look at senior-author entries
+		SELECT MAX(id)
+		FROM article_authors
+		GROUP BY article
+	) AND aa.article IN (--- only include international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM article_authors aa
+			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN institutions i ON ai.institution=i.id
+			INNER JOIN countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+		) AS countrz
+		WHERE countrycount >= 2
+	)
+	GROUP BY c.name
+) AS seniorauthor ON totals.country=seniorauthor.country
+ORDER BY intl_senior_author DESC, intl_any_author DESC
+```
+
+### Figure 4: International senior authorship
+
+#### Figure 4a: International preprints against international senior author rate

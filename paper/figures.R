@@ -13,7 +13,8 @@ library(DescTools) # for harmonic mean
 library(rworldmap) # for map of preprints
 
 
-setwd('/Users/rabdill/code/biorxiv_authors/code/paper/data')
+#setwd('/Users/rabdill/code/biorxiv_authors/code/paper/data')
+setwd('/Users/rabdill/code/biorxiv_authors/code/paper/final')
 themedarktext = "#707070"
 big_fontsize = unit(12, "pt")
 
@@ -227,12 +228,15 @@ ncol=1, nrow=2, rel_heights=c(3,2), labels=c('b'))
 # FIGURE 2: PREPRINT ENTHUSIASM
 # panel - preprint enthusiasm
 data <- read.csv('adjusted_preprints.csv')
+data <- data[data$preprints>50,]
 data <- cleanup_countries(data)
-toplot <- rbind(data[1:10,], data[52:61,])
-enthusiasm <- ggplot(data=toplot, aes(x=reorder(country, proportion_ratio), y=proportion_ratio,
-  fill=continent)) +
+data$country <- as.character(data$country) 
+data[data$country=='United States',]$country <- 'USA'
+data[data$country=='United Kingdom',]$country <- 'UK'
+data$country <- as.factor(data$country)
+
+enthusiasm_top <- ggplot(data=data[1:10,], aes(x=reorder(country, proportion_ratio), y=proportion_ratio)) +
   geom_bar(stat="identity") +
-  geom_vline(xintercept=10.5, color='red') +
   scale_y_continuous(expand=c(0,0)) +
   coord_flip(ylim=c(0,2.8)) +
   labs(x = "Country", y = "bioRxiv enthusiasm") +
@@ -241,20 +245,29 @@ enthusiasm <- ggplot(data=toplot, aes(x=reorder(country, proportion_ratio), y=pr
     aesthetics = c('color','fill')) +
   basetheme +
   theme(
-    legend.position = "bottom",
     plot.margin = margin(0,0,0,0)
   )
 
-legend <- get_legend(enthusiasm)
+enthusiasm_bottom <- ggplot(data=data[36:45,], aes(x=reorder(country, proportion_ratio), y=proportion_ratio)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(expand=c(0,0)) +
+  coord_flip(ylim=c(0,2.8)) +
+  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set2', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    plot.margin = margin(0,0,0,0)
+  )
 
-enthusiasm <- enthusiasm + theme(legend.position="none")
+
 # panel - total preprints
 preprints <- ggplot(data=toplot,
   aes(x=reorder(country, proportion_ratio), y=citable_docs, fill=continent, label=preprints)
 ) +
   geom_bar(stat="identity") +
   geom_text(aes(label=comma(citable_docs, accuracy=1), y=480000), hjust=0) +
-  geom_vline(xintercept=10.5, color='red') +
   scale_y_continuous(expand=c(0,0), labels=comma) +
   coord_flip() +
   labs(x = "Country", y = "Worldwide citable documents") +
@@ -271,8 +284,11 @@ preprints <- ggplot(data=toplot,
 
 # PANEL: scatterplot of enthusiasm
 library(ggrepel)
-ggplot(data) +
-  geom_point(aes(x=citable_docs, y=proportion_ratio, size=preprints)) +
+data <- read.csv('adjusted_preprints.csv')
+data <- cleanup_countries(data)
+toplot <- data[data$preprints>=50,]
+scatter <- ggplot(toplot) +
+  geom_point(aes(x=citable_docs, y=proportion_ratio)) +
   geom_hline(yintercept=1, color='red', size=0.2) +
   geom_text_repel(
     aes(x=citable_docs, y=proportion_ratio, label=country),
@@ -289,12 +305,23 @@ ggplot(data) +
   basetheme
 
 # assemble figure
-top <- (enthusiasm + preprints) + plot_layout(widths=c(3,6))
 
-top / legend +
-  plot_layout(heights = c(13, 1))
-
-
+layout <- '
+AAAAAB
+AAAAAB
+AAAAAB
+AAAAA#
+AAAAAC
+AAAAAC
+AAAAAC
+'
+wrap_plots(A=scatter,
+  B=enthusiasm_top, C=enthusiasm_bottom,
+  design=layout) + plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
 
 
 # FIGURE: Institutions
