@@ -99,7 +99,7 @@ Total preprints in analysis:
 SELECT COUNT(DISTINCT article) FROM article_authors;
 ```
 
-#### Table 1: Preprints per country
+### Table 1: Preprints per country
 (Truncated list appears as Table 1; full list appears as **Supplementary Table 1**.)
 ```sql
 SELECT anyauthor.alpha2, anyauthor.country, COALESCE(seniorauthor.preprints, 0) AS senior_author, anyauthor.preprints AS any_author
@@ -780,8 +780,9 @@ compiled + plot_annotation(
 ) & theme(plot.tag=element_text(face='bold'))
 ```
 
+## Results: Preprint outcomes
 
-### Figure 5: Preprint outcomes
+### Figure 5: Downloads and publication rates
 
 #### Figure 5a: Downloads per preprint
 
@@ -807,3 +808,162 @@ ORDER BY dloads.downloads DESC
 ```
 
 Building the panel:
+
+```r
+dloads <- read.csv('downloads_per_paper.csv')
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+toplot <- dloads[dloads$country %in% tokeep$country,] %>% select(country,downloads)
+toplot <- cleanup_countries(toplot)
+
+dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downloads)) +
+  geom_boxplot(outlier.shape = NA, coef=0) +
+  coord_flip(ylim=c(0, 700)) +
+  scale_y_continuous(expand=c(0,0)) +
+  geom_hline(yintercept=median(dloads$downloads), size=1, color='red') +
+  labs(y='Downloads per preprint', x='Country') +
+  theme_bw() +
+  basetheme
+```
+
+#### Figure 5b: Publication rate and total preprints
+Uses data from \*tc, plus country-level publication data *for preprints last updated prior to 2019*. Data available in **Supplementary Table 5** from this query:
+
+```sql
+SELECT totalpre2019.country, totalpre2019.preprints AS total, COALESCE(publishedpre2019.preprints,0) AS published
+FROM (
+	SELECT c.name AS country, COUNT(aa.article) AS preprints
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	) AND
+	EXTRACT(year FROM aa.observed) < 2019 
+	GROUP BY c.name
+) AS totalpre2019
+LEFT JOIN (
+	SELECT c.name AS country, COUNT(aa.article) AS preprints
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	INNER JOIN prod.publications p ON aa.article=p.article
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	) AND
+	EXTRACT(year FROM aa.observed) < 2019 
+	GROUP BY c.name
+) AS publishedpre2019 ON totalpre2019.country=publishedpre2019.country
+ORDER BY 2 DESC, 1 DESC
+```
+
+Building the panel:
+
+```r
+dloads <- read.csv('downloads_per_paper.csv')
+dloads <- cleanup_countries(dloads)
+counts <- read.csv('supp_table01.csv')
+counts <- cleanup_countries(counts)
+medians <- ddply(dloads, .(country), summarise, med = median(downloads))
+data <- medians %>% inner_join(counts, by=c("country"="country")) %>%
+  select(country, med, senior_author)
+colnames(data) <- c('country','downloads','preprints')
+data <- data[data$preprints >= 100,]
+dload_totals <- ggplot(data, aes(x=preprints, y=downloads)) +
+  geom_point(size=3) +
+  geom_smooth(method='lm', se=FALSE, formula='y~x') +
+  scale_x_log10(labels=comma) +
+  labs(x='Total preprints, senior author', y='Downloads per preprint') +
+  theme_bw() +
+  basetheme
+```
+
+#### Figure 5c: Median downloads against publication rate
+
+Uses the same data as Figures 5a and 5b. Building the panel:
+
+```r
+dloads <- read.csv('downloads_per_paper.csv')
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+toplot <- dloads[dloads$country %in% tokeep$country,] %>% select(country,downloads)
+toplot <- cleanup_countries(toplot)
+medians <- aggregate(toplot$downloads, by=list(country=toplot$country), FUN=median)
+colnames(medians) <- c('country','downloads')
+
+# Then publication data
+pubs <- read.csv('supp_table05.csv')
+pubs <- cleanup_countries(pubs)
+pubs$pubrate <- pubs$published / pubs$total
+medians <- medians %>% inner_join(pubs, by=c("country"="country")) %>%
+  select(country,downloads,pubrate)
+
+pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
+  geom_point(size=3) +
+  geom_smooth(method='lm', se=FALSE, formula='y~x') +
+  scale_x_continuous(
+    limits=c(193,400),
+    breaks=seq(200,400,50)
+  ) +
+  labs(x='Downloads per preprint', y='Publication rate') +
+  theme_bw() +
+  basetheme
+```
+
+Correlation between publication rate and median downloads per preprint:
+
+```r
+cor.test(medians$downloads, medians$pubrate, method='spearman')
+```
+
+#### Figure 5d: Publication rate
+Uses the same data as Figure 5b. Building the panel:
+
+```r
+pubs <- read.csv('supp_table05.csv')
+pubs <- cleanup_countries(pubs)
+pubs$pubrate <- pubs$published / pubs$total
+
+# we want to display the same countries in the downloads and
+# publication rate plots, so load that list here:
+dloads <- read.csv('downloads_per_paper.csv')
+dloads <- cleanup_countries(dloads)
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+
+toplot <- pubs[pubs$country %in% tokeep$country,] %>% select(country,pubrate)
+
+
+pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=sum(pubdata$published_pre2019)/sum(pubdata$senior_pre2019), color='red', size=1) + # overall
+  labs(y='Proportion published', x='Country') +
+  coord_flip() +
+  scale_y_continuous(expand=c(0,0), limits=c(0,0.8)) +
+  theme_bw() +
+  basetheme
+```
+
+#### Compiling Figure 5
+
+```r
+built <- dloadplot | (dload_totals / pubdload) | pubrateplot
+built +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
+```
