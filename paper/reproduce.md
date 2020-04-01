@@ -650,3 +650,160 @@ ORDER BY intl_senior_author DESC, intl_any_author DESC
 ### Figure 4: International senior authorship
 
 #### Figure 4a: International preprints against international senior author rate
+Uses the same data as in **Table 2**. Building the panel:
+
+```r
+data <- read.csv('supp_table03.csv')
+data <- cleanup_countries(data)
+# limit to countries with >= 30 international preprints
+data <- data[data$intl_any_author>30,]
+
+a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_author_rate)) +
+  geom_point(aes(color=as.factor(contributor)), size=2.5) +
+  scale_x_log10(labels=comma) +
+  scale_color_manual(values=c('#000000','red')) +
+  labs(x='International preprints, any author', y='% international senior authorship') +
+  geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none'
+  )
+```
+
+#### Figure 4b: International senior author rate
+*tk
+
+#### Figure 4c: Collaborator countries and senior authorship
+
+Data for this figure is available as **Supplementary Table 4**, generated with this query:
+
+```sql
+SELECT contributor, senior, COUNT(DISTINCT article)
+FROM (
+	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	LEFT JOIN (
+		SELECT aa.article, c.name AS country
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE aa.id IN ( --- only show entry for senior author on each paper
+			SELECT MAX(id)
+			FROM prod.article_authors
+			GROUP BY article
+		) AND ---exclude the senior-author papers from contributor countries
+		c.alpha2 NOT IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	) AS seniors ON aa.article=seniors.article
+	WHERE aa.article IN ( --- only show international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM prod.article_authors aa
+			INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN prod.institutions i ON ai.institution=i.id
+			INNER JOIN prod.countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+			ORDER BY countrycount DESC
+		) AS countrz
+		WHERE countrycount >= 2
+	) AND aa.id IN ( --- list all entries for authors from contributor countries
+		SELECT aa.id
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE c.alpha2 IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+	)
+) AS intntl
+WHERE senior IS NOT NULL
+GROUP BY 1,2
+```
+
+Building the panel:
+
+```r
+data=read.csv('supp_table04.csv')
+data <- data[data$senior != 'UNKNOWN',]
+data$senior <- as.character(data$senior) # switch it so we can reset some more easily
+data$senior[data$senior=='United States of America'] <-'United\nStates'
+data$senior[data$senior=='United Kingdom of Great Britain and Northern Ireland'] <-'United\nKingdom'
+data$senior <- as.factor(data$senior)
+
+data$contributor <- as.character(data$contributor)
+data$contributor[data$contributor=='Tanzania, United Republic of'] <-'Tanzania'
+data$contributor[data$contributor=='Bolivia (Plurinational State of),'] <-'Bolivia'
+data$contributor[data$contributor=='Viet Nam'] <-'Vietnam'
+data$contributor <- as.factor(data$contributor)
+
+tokeep <- aggregate(data$count, by=list(countries=data$senior), FUN=sum)
+
+# use these colors for the strata, so they match the senior author colors:
+colors <- c('white','white','white','white','white','white','white','white','white','white',
+            'white','white','white','white','white','white','white','white','white',
+            "#999999","#F781BF","#A65628","#FFFF33","#FF7F00","#984EA3","#4DAF4A","#377EB8","#E41A1C")
+# only include senior countries with > 25 preprints listed
+toplot <- data[data$senior %in% tokeep[tokeep$x > 25,]$countries,]
+
+c <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
+  geom_alluvium(aes(fill=senior), width = 1/12) +
+  geom_stratum(width = 1/6, color = "gray", fill=colors) +
+  geom_label(stat = "stratum", infer.label = TRUE) +
+  scale_fill_brewer(palette = 'Set1', aesthetics = c('fill')) +
+  #scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
+  theme_void() +
+  basetheme +
+  theme(
+    legend.position='none',
+    axis.text.x=element_blank(),
+    axis.text.y=element_blank(),
+    axis.title.y=element_blank(),
+    plot.margin = unit(c(1,0,1,0.25), "lines")
+  )
+```
+
+#### Compiling Figure 4
+```r
+compiled <- (a / b)
+compiled <- compiled | c
+compiled <- compiled + plot_layout(widths=c(1,2))
+compiled + plot_annotation(
+  tag_levels = 'a',
+  tag_prefix = '(',
+  tag_suffix = ')',
+) & theme(plot.tag=element_text(face='bold'))
+```
+
+
+### Figure 5: Preprint outcomes
+
+#### Figure 5a: Downloads per preprint
+
+Data from this query saved as `downloads_per_paper.csv`:
+
+```sql
+SELECT aa.article, dloads.downloads, c.name AS country
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+INNER JOIN (
+	SELECT article, SUM(pdf) AS downloads
+	FROM article_traffic
+	GROUP BY 1
+) AS dloads ON aa.article=dloads.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM article_authors
+	GROUP BY article
+)
+ORDER BY dloads.downloads DESC
+```
+
+Building the panel:
