@@ -696,22 +696,26 @@ library(corrplot)
 pplot <- jlinks %>% select(country, journal, padj)
 
 # filter by p value:
-tokeep <- pplot[pplot$padj <= 0.05,]$journal
-pplot <- pplot[pplot$journal %in% tokeep,]
+# first find journals with at least one link
+tokeep.journal <- pplot[pplot$padj <= 0.05,]$journal
+pplot <- pplot[pplot$journal %in% tokeep.journal,]
+# then countries with at least one link
+tokeep.country <- pplot[pplot$padj <= 0.05,]$country
+pplot <- pplot[pplot$country %in% tokeep.country,]
+
 pplot <- spread(pplot, country, padj)
 rownames(pplot) <- as.character(pplot$journal)
 
 # then build matrix of journal/country preprint counts
 countplot <- jlinks %>% select(country, journal, preprints)
+countplot <- countplot[countplot$journal %in% tokeep.journal,]
+countplot <- countplot[countplot$country %in% tokeep.country,]
 countplot <- spread(countplot, country, preprints)
-countplot <- countplot[countplot$journal %in% tokeep,]
-#heatplot_wide[is.na(heatplot_wide)] <- 1
 rownames(countplot) <- as.character(countplot$journal)
 
 count_sig <- function(x) {
   if(is.na(x)) return(0)
   if(x <= 0.05) {
-    print(x)
     return(1)
   }
   return(0)
@@ -719,17 +723,23 @@ count_sig <- function(x) {
 linkcounter <- pplot
 linkcounter$journal <- NULL
 linkcounter <- as.data.frame(apply(linkcounter, 1:2, count_sig))
-links <- as.data.frame(rowSums(linkcounter))
-links$journal <- rownames(links)
-rownames(links) <- NULL
-colnames(links) <- c('links','journal')
+journallinks <- as.data.frame(rowSums(linkcounter))
+journallinks$journal <- rownames(journallinks)
+rownames(journallinks) <- NULL
+colnames(journallinks) <- c('links','journal')
 
 # add null counts to matrix and sort by them
-countplot <-  countplot %>% inner_join(links, by=c("journal"="journal"))
+countplot <-  countplot %>% inner_join(journallinks, by=c("journal"="journal"))
 countplot <- countplot %>% arrange(-links)
 rownames(countplot) <- as.character(countplot$journal)
 
-pplot <-  pplot %>% inner_join(links, by=c("journal"="journal"))
+countrylinks <- as.data.frame(colSums(linkcounter))
+countrylinks$country <- rownames(countrylinks)
+rownames(countrylinks) <- NULL
+colnames(countrylinks) <- c('links','country')
+countrylinks <- countrylinks %>% arrange(-links)
+
+pplot <-  pplot %>% inner_join(journallinks, by=c("journal"="journal"))
 pplot <- pplot %>% arrange(-links)
 rownames(pplot) <- as.character(pplot$journal)
 
@@ -743,13 +753,12 @@ pplot$links <- NULL
 
 redblue <- colorRampPalette(c('blue','blue','red'))
 
-corrplot(as.matrix(countplot),
+corrplot(as.matrix(countplot[countrylinks$country]),
   method='shade', is.corr = FALSE, insig='blank',
   sig.level = .05, col=redblue(100), na.label=NULL,
-  p.mat=as.matrix(pplot))
+  p.mat=as.matrix(pplot[countrylinks$country]))
 
-corrplot(as.matrix(countplot),
-         method='shade', is.corr = FALSE, col=redblue(100))
+
 # STATEMENTS FROM PAPER:
 # correlation of different counting methods:
 counts <- read.csv('supp_table06.csv')
