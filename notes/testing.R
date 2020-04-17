@@ -692,22 +692,64 @@ ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05)
 # FIGURE 5b: Country/journal links
 library(tidyr)
 library(corrplot)
-heatplot <- jlinks %>% select(country, journal, padj)
-heatplot_wide <- spread(heatplot, country, padj)
+# first, build matrix of p-values
+pplot <- jlinks %>% select(country, journal, padj)
 
-tokeep <- rowSums(is.na(heatplot_wide))
-tokeep <- as.data.frame(tokeep)
-tokeep$journal <- rownames(tokeep)
-rownames(tokeep) <- NULL
-colnames(tokeep) <- c('nulls','journal')
-tokeep <- tokeep[tokeep$nulls < 12,]$journal
-heatplot_wide[heatplot_wide$journal %in% tokeep,]
+# filter by p value:
+tokeep <- pplot[pplot$padj <= 0.05,]$journal
+pplot <- pplot[pplot$journal %in% tokeep,]
+pplot <- spread(pplot, country, padj)
+rownames(pplot) <- as.character(pplot$journal)
+
+# then build matrix of journal/country preprint counts
+countplot <- jlinks %>% select(country, journal, preprints)
+countplot <- spread(countplot, country, preprints)
+countplot <- countplot[countplot$journal %in% tokeep,]
 #heatplot_wide[is.na(heatplot_wide)] <- 1
+rownames(countplot) <- as.character(countplot$journal)
 
-rownames(heatplot_wide) <- as.character(heatplot_wide[,1])
-heatplot_wide <- heatplot_wide[-1]
-corrplot(as.matrix(heatplot_wide), is.corr = FALSE)
+count_sig <- function(x) {
+  if(is.na(x)) return(0)
+  if(x <= 0.05) {
+    print(x)
+    return(1)
+  }
+  return(0)
+}
+linkcounter <- pplot
+linkcounter$journal <- NULL
+linkcounter <- as.data.frame(apply(linkcounter, 1:2, count_sig))
+links <- as.data.frame(rowSums(linkcounter))
+links$journal <- rownames(links)
+rownames(links) <- NULL
+colnames(links) <- c('links','journal')
 
+# add null counts to matrix and sort by them
+countplot <-  countplot %>% inner_join(links, by=c("journal"="journal"))
+countplot <- countplot %>% arrange(-links)
+rownames(countplot) <- as.character(countplot$journal)
+
+pplot <-  pplot %>% inner_join(links, by=c("journal"="journal"))
+pplot <- pplot %>% arrange(-links)
+rownames(pplot) <- as.character(pplot$journal)
+
+countplot$journal <- NULL
+countplot$links <- NULL
+pplot$journal <- NULL # chop off column with journal names
+pplot$links <- NULL
+# make all the empty cells "insignificant"
+#pplot[is.na(pplot)] <- 1
+#countplot[is.na(countplot)] <-15 # workaround for bug (ONLY USE IF WE DON'T DISPLAY NON-SIGNIFICANT NUMBERS)
+
+redblue <- colorRampPalette(c('blue','blue','red'))
+
+corrplot(as.matrix(countplot),
+  method='shade', is.corr = FALSE, insig='blank',
+  sig.level = .05, col=redblue(100), na.label=NULL,
+  p.mat=as.matrix(pplot))
+
+corrplot(as.matrix(countplot),
+         method='shade', is.corr = FALSE, col=redblue(100))
 # STATEMENTS FROM PAPER:
 # correlation of different counting methods:
 counts <- read.csv('supp_table06.csv')
