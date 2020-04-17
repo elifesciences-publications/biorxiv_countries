@@ -693,25 +693,25 @@ ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05)
 library(tidyr)
 library(corrplot)
 # first, build matrix of p-values
-pplot <- jlinks %>% select(country, journal, padj)
+pdata <- jlinks %>% select(country, journal, padj)
 
 # filter by p value:
 # first find journals with at least one link
-tokeep.journal <- pplot[pplot$padj <= 0.05,]$journal
-pplot <- pplot[pplot$journal %in% tokeep.journal,]
+tokeep.journal <- pdata[pdata$padj <= 0.05,]$journal
+pdata <- pdata[pdata$journal %in% tokeep.journal,]
 # then countries with at least one link
-tokeep.country <- pplot[pplot$padj <= 0.05,]$country
-pplot <- pplot[pplot$country %in% tokeep.country,]
+tokeep.country <- pdata[pdata$padj <= 0.05,]$country
+pdata <- pdata[pdata$country %in% tokeep.country,]
 
-pplot <- spread(pplot, country, padj)
-rownames(pplot) <- as.character(pplot$journal)
+pdata <- spread(pdata, country, padj)
+rownames(pdata) <- as.character(pdata$journal)
 
 # then build matrix of journal/country preprint counts
-countplot <- jlinks %>% select(country, journal, preprints)
-countplot <- countplot[countplot$journal %in% tokeep.journal,]
-countplot <- countplot[countplot$country %in% tokeep.country,]
-countplot <- spread(countplot, country, preprints)
-rownames(countplot) <- as.character(countplot$journal)
+countdata <- jlinks %>% select(country, journal, preprints)
+countdata <- countdata[countdata$journal %in% tokeep.journal,]
+countdata <- countdata[countdata$country %in% tokeep.country,]
+countdata <- spread(countdata, country, preprints)
+rownames(countdata) <- as.character(countdata$journal)
 
 count_sig <- function(x) {
   if(is.na(x)) return(0)
@@ -720,7 +720,7 @@ count_sig <- function(x) {
   }
   return(0)
 }
-linkcounter <- pplot
+linkcounter <- pdata
 linkcounter$journal <- NULL
 linkcounter <- as.data.frame(apply(linkcounter, 1:2, count_sig))
 journallinks <- as.data.frame(rowSums(linkcounter))
@@ -729,9 +729,9 @@ rownames(journallinks) <- NULL
 colnames(journallinks) <- c('links','journal')
 
 # add null counts to matrix and sort by them
-countplot <-  countplot %>% inner_join(journallinks, by=c("journal"="journal"))
-countplot <- countplot %>% arrange(-links)
-rownames(countplot) <- as.character(countplot$journal)
+countdata <-  countdata %>% inner_join(journallinks, by=c("journal"="journal"))
+countdata <- countdata %>% arrange(-links)
+rownames(countdata) <- as.character(countdata$journal)
 
 countrylinks <- as.data.frame(colSums(linkcounter))
 countrylinks$country <- rownames(countrylinks)
@@ -739,24 +739,58 @@ rownames(countrylinks) <- NULL
 colnames(countrylinks) <- c('links','country')
 countrylinks <- countrylinks %>% arrange(-links)
 
-pplot <-  pplot %>% inner_join(journallinks, by=c("journal"="journal"))
-pplot <- pplot %>% arrange(-links)
-rownames(pplot) <- as.character(pplot$journal)
+pdata <-  pdata %>% inner_join(journallinks, by=c("journal"="journal"))
+pdata <- pdata %>% arrange(-links)
+rownames(pdata) <- as.character(pdata$journal)
 
-countplot$journal <- NULL
-countplot$links <- NULL
-pplot$journal <- NULL # chop off column with journal names
-pplot$links <- NULL
+countdata$journal <- NULL
+countdata$links <- NULL
+pdata$journal <- NULL # chop off column with journal names
+pdata$links <- NULL
 # make all the empty cells "insignificant"
-#pplot[is.na(pplot)] <- 1
-#countplot[is.na(countplot)] <-15 # workaround for bug (ONLY USE IF WE DON'T DISPLAY NON-SIGNIFICANT NUMBERS)
+pdata[is.na(pdata)] <- 1
+countdata[is.na(countdata)] <-15 # workaround for bug (ONLY USE IF WE DON'T DISPLAY NON-SIGNIFICANT NUMBERS)
 
-redblue <- colorRampPalette(c('blue','blue','red'))
+redblue <- colorRampPalette(c('yellow','yellow','red'))
 
-corrplot(as.matrix(countplot[countrylinks$country]),
-  method='shade', is.corr = FALSE, insig='blank',
-  sig.level = .05, col=redblue(100), na.label=NULL,
-  p.mat=as.matrix(pplot[countrylinks$country]))
+countplot <- as.matrix(countdata[countrylinks$country])
+pplot <- as.matrix(pdata[countrylinks$country])
+corrplot(countplot,
+  method='shade', is.corr = FALSE, insig='blank', addgrid.col='grey',
+  sig.level = .05, col=redblue(50), na.label=NULL,
+  p.mat=pplot)
+
+
+
+
+
+# LESS AWFUL HEAT MAP
+new <- jlinks %>% select(country, journal, preprints, padj)
+tokeep.journal <- new[new$padj <= 0.05,]$journal
+tokeep.country <- new[new$padj <= 0.05,]$country
+new <- new[new$country %in% tokeep.country,]
+new <- new[new$journal %in% tokeep.journal,]
+new$padj.size <- (1-new$padj)
+
+ggplot(new, aes(x=country,y=journal, fill=preprints,  height=padj.size,  width=padj.size)) + 
+  geom_tile()+
+  #scale_fill_brewer(palette = 'Set1', guide='legend', aesthetics = c('color','fill')) +
+  scale_fill_distiller(palette = "Reds", direction=1) +
+  #scale_color_distiller(palette = "RdYlGn", direction=1, limits=c(0,1),name="q-value") +
+  #scale_x_continuous("variable", breaks = seq_len(m), labels = colnames(nba)) +
+  #scale_y_continuous("variable", breaks = seq_len(m), labels = colnames(nba), trans="reverse") +
+  coord_fixed() + # to keep the tiles square
+  theme(axis.text.x=element_text(angle=45, vjust=1, hjust=1),
+        panel.background=element_blank(),
+        #panel.grid.minor=element_blank(),
+        #panel.grid.major=element_blank(),
+  )
+asdf
+
+
+
+
+
 
 
 # STATEMENTS FROM PAPER:
