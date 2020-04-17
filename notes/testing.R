@@ -765,29 +765,84 @@ corrplot(countplot,
 
 
 # LESS AWFUL HEAT MAP
+
+#sizing is p value
 new <- jlinks %>% select(country, journal, preprints, padj)
 tokeep.journal <- new[new$padj <= 0.05,]$journal
 tokeep.country <- new[new$padj <= 0.05,]$country
 new <- new[new$country %in% tokeep.country,]
 new <- new[new$journal %in% tokeep.journal,]
-new$padj.size <- (1-new$padj)
 
-ggplot(new, aes(x=country,y=journal, fill=preprints,  height=padj.size,  width=padj.size)) + 
+new$size <- 1-new$padj
+quant <- ecdf(new$size)
+new$size <- quant(new$size)
+
+toplot <- new[new$padj <= 0.05,]
+
+# rearrange the axes
+toplot$counting <- 1 # for counting significant links
+journal_totals <- ddply(toplot, .(journal), summarise, journaltotal = sum(counting))
+country_totals <- ddply(toplot, .(country), summarise, countrytotal = sum(counting))
+toplot <- toplot %>% inner_join(journal_totals, by=c('journal'='journal'))
+toplot <- toplot %>% inner_join(country_totals, by=c('country'='country'))
+xorder <- toplot %>% arrange(-countrytotal)
+xorder <- unique(xorder$country)
+yorder <- toplot %>% arrange(journaltotal)
+yorder <- unique(yorder$journal)
+
+background <- expand.grid(unique(toplot$journal), unique(toplot$country))
+colnames(background) <- c('journal','country')
+ggplot() + 
+  # first the grid:
+  geom_tile(data=background, aes(x=country, y=journal, height=1, width=1), color='grey', fill='white') +
+  # then the real data:
+  geom_tile(data=toplot, # the real boxes
+    aes(
+      x=country,
+      y=journal,
+      #x=reorder(country, -countrytotal),
+      #y=reorder(journal, journaltotal),
+      fill=preprints, height=size, width=size
+    )
+  ) + 
+  scale_x_discrete(position = "top", limits=xorder) +
+  scale_y_discrete(limits=yorder) +
+  scale_fill_distiller(palette = "Reds", direction=1, trans = "log", labels=label_number(accuracy=1)) +
+  coord_fixed() + # to keep the tiles square
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_text(angle=65, vjust=0, hjust=0),
+    panel.background=element_blank(),
+    panel.grid.minor=element_blank(),
+    panel.grid.major=element_blank(),
+    axis.ticks = element_blank()
+  )
+
+
+# sizing is PREPRINT COUNT
+new <- jlinks %>% select(country, journal, preprints, padj)
+tokeep.journal <- new[new$padj <= 0.05,]$journal
+tokeep.country <- new[new$padj <= 0.05,]$country
+new <- new[new$country %in% tokeep.country,]
+new <- new[new$journal %in% tokeep.journal,]
+
+quant <- ecdf(new$preprints)
+new$size <- quant(new$preprints)
+
+ggplot(new[new$padj <= 0.05,], aes(x=country,y=journal, fill=padj,  height=size,  width=size)) + 
   geom_tile()+
   #scale_fill_brewer(palette = 'Set1', guide='legend', aesthetics = c('color','fill')) +
-  scale_fill_distiller(palette = "Reds", direction=1) +
+  scale_fill_distiller(palette = "Reds", direction=-1) +
   #scale_color_distiller(palette = "RdYlGn", direction=1, limits=c(0,1),name="q-value") +
   #scale_x_continuous("variable", breaks = seq_len(m), labels = colnames(nba)) +
   #scale_y_continuous("variable", breaks = seq_len(m), labels = colnames(nba), trans="reverse") +
   coord_fixed() + # to keep the tiles square
-  theme(axis.text.x=element_text(angle=45, vjust=1, hjust=1),
-        panel.background=element_blank(),
-        #panel.grid.minor=element_blank(),
-        #panel.grid.major=element_blank(),
+  theme(
+    axis.text.x=element_text(angle=45, vjust=1, hjust=1),
+    #panel.background=element_blank(),
+    #panel.grid.minor=element_blank(),
   )
-asdf
-
-
 
 
 
