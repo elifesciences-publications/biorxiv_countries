@@ -182,7 +182,94 @@ Panel 1a is the only figure panel not arranged in R—it was exported separately
 
 
 
-#### Figure 1b: Preprints per country over time
+#### Figure 1b: Preprints per country, senior author
+Uses the same data as Figure 1d. Building the panel:
+
+```r
+monthframe=read.csv('preprints_over_time.csv')
+data <- monthframe[monthframe$month=='2019-12',]
+
+senior <- ggplot(
+  data=data,
+  aes(x=reorder(country, running_total), y=running_total, fill=country)
+) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(expand=c(0,0), breaks=seq(0,30000,8000), labels=comma) +
+  coord_flip(ylim=c(0,28000)) +
+  labs(x = "", y = "Preprints, senior author") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set1', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    legend.position = "none",
+    plot.margin = unit(c(2,0.2,1,1), "lines")
+  )
+```
+
+#### Figure 1c: Preprints per country, any author
+Uses the same data as Table 1, with an additional "OTHER" total pulled from this query:
+
+```sql
+SELECT COUNT(DISTINCT aa.article)
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+WHERE c.name NOT IN (
+    SELECT name FROM (
+        SELECT countries.name, COUNT(aa.article) AS preprints
+        FROM article_authors aa
+        INNER JOIN affiliation_institutions ai
+            ON ai.affiliation=aa.affiliation
+        INNER JOIN institutions
+            ON institutions.id=ai.institution
+        INNER JOIN countries
+            ON institutions.country=countries.alpha2
+        WHERE aa.id IN (
+            SELECT id FROM (
+                SELECT article, MAX(id) AS id
+                FROM article_authors
+                GROUP BY 1
+            ) AS seniorauthors
+        )
+        GROUP BY 1
+        ORDER BY 2 DESC
+    ) AS preprints
+    LIMIT 8
+)
+```
+
+Building the panel:
+
+```r
+data <- read.csv('supp_table01.csv')
+data <- cleanup_countries(data[1:8,])
+data$country <- as.character(data$country)
+data <- rbind(data, data.frame(alpha2=NA, country='OTHER',senior_author=10000,any_author=25331)) # dummy value for "senior author"
+data$country <- as.factor(data$country)
+
+any <- ggplot(
+  data=data,
+  aes(x=reorder(country, senior_author), y=any_author, fill=country)
+) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(expand=c(0,0), breaks=seq(0,36000,8000), labels=comma) +
+  coord_flip(ylim=c(0,36000)) +
+  labs(x = "Country", y = "Preprints, any author") +
+  theme_bw() +
+  scale_fill_brewer(palette = 'Set1', guide='legend',
+                    aesthetics = c('color','fill')) +
+  basetheme +
+  theme(
+    legend.position = "none",
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    plot.margin = unit(c(2,1,1,0.2), "lines")
+  )
+```
+
+#### Figure 1d: Preprints per country over time
 Data saved as `preprints_over_time.csv`. One aspect was modified by hand: Countries in this query only have entries in months for which they posted new preprints, so in the early months, some countries are missing (i.e. Australia had no preprints in a month early in 2014, so that bar segment disappears in that month). These were added manually.
 ```sql
 WITH vars AS (
@@ -248,6 +335,7 @@ Building the panel:
 
 ```r
 monthframe=read.csv('preprints_over_time.csv')
+monthframe <- cleanup_countries(monthframe)
 labelx <- 76
 labelsize <- unit(10, "pt")
 time <- ggplot(monthframe, aes(x=month, y=running_total,
@@ -263,7 +351,7 @@ time <- ggplot(monthframe, aes(x=month, y=running_total,
     axis.text.x=element_blank(),
     axis.text.y=element_blank(),
     legend.position="none",
-    plot.margin = unit(c(1,6,1,1), "lines"), # for right-margin labels
+    plot.margin = unit(c(0,6,1,1), "lines"), # for right-margin labels
   ) +
   annotation_custom(
     grob = textGrob(label = "UNKNOWN", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
@@ -298,97 +386,15 @@ time <- ggplot_gtable(ggplot_build(time))
 time$layout$clip[time$layout$name == "panel"] <- "off"
 ```
 
-#### Figure 1c: Preprints per country, senior author
-Uses the same data as Figure 1b. Building the panel:
-
-```r
-data <- monthframe[monthframe$month=='2019-12',]
-
-senior <- ggplot(
-  data=data,
-  aes(x=reorder(country, running_total), y=running_total, fill=country)
-) +
-  geom_bar(stat="identity") +
-  scale_y_continuous(expand=c(0,0), breaks=seq(0,30000,8000), labels=comma) +
-  coord_flip(ylim=c(0,28000)) +
-  labs(x = "Country", y = "Preprints, senior author") +
-  theme_bw() +
-  scale_fill_brewer(palette = 'Set1', guide='legend',
-                    aesthetics = c('color','fill')) +
-  basetheme +
-  theme(
-    legend.position = "none"
-  )
-```
-
-#### Figure 1d: Preprints per country, any author
-Uses the same data as Table 1, with an additional "OTHER" total pulled from this query:
-
-```sql
-SELECT COUNT(DISTINCT aa.article)
-FROM article_authors aa
-INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN institutions i ON ai.institution=i.id
-INNER JOIN countries c ON i.country=c.alpha2
-WHERE c.name NOT IN (
-    SELECT name FROM (
-        SELECT countries.name, COUNT(aa.article) AS preprints
-        FROM article_authors aa
-        INNER JOIN affiliation_institutions ai
-            ON ai.affiliation=aa.affiliation
-        INNER JOIN institutions
-            ON institutions.id=ai.institution
-        INNER JOIN countries
-            ON institutions.country=countries.alpha2
-        WHERE aa.id IN (
-            SELECT id FROM (
-                SELECT article, MAX(id) AS id
-                FROM article_authors
-                GROUP BY 1
-            ) AS seniorauthors
-        )
-        GROUP BY 1
-        ORDER BY 2 DESC
-    ) AS preprints
-    LIMIT 8
-)
-```
-
-Building the panel:
-
-```r
-data <- read.csv('supp_table01.csv')
-data <- cleanup_countries(data[1:8,])
-data$country <- as.character(data$country)
-data <- rbind(data, data.frame(alpha2=NA, country='OTHER',senior_author=10000,any_author=25347)) # dummy value for "senior author"
-data$country <- as.factor(data$country)
-
-any <- ggplot(
-  data=data,
-  aes(x=reorder(country, senior_author), y=any_author, fill=country)
-) +
-  geom_bar(stat="identity") +
-  scale_y_continuous(expand=c(0,0), breaks=seq(0,36000,8000), labels=comma) +
-  coord_flip(ylim=c(0,36000)) +
-  labs(x = "Country", y = "Preprints, any author") +
-  theme_bw() +
-  scale_fill_brewer(palette = 'Set1', guide='legend',
-                    aesthetics = c('color','fill')) +
-  basetheme +
-  theme(
-    legend.position = "none",
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank()
-  )
-```
 
 #### Compiling Figure 1
 ```r
-plot_grid(time,
-  plot_grid(senior, any, nrow=1,ncol=2, rel_widths=c(3,2),
-            labels=c('c','d'), hjust = c(-0.65, 0.5), vjust=c(0.5, 0.5)
+plot_grid(
+  plot_grid(senior, any, nrow=1,ncol=2, rel_widths=c(4,3),
+            labels=c('(b)','(c)'), hjust = c(-0.65, 0.5)
   ),
-  ncol=1, nrow=2, rel_heights=c(3,2), labels=c('b'))
+  time,
+  ncol=1, nrow=2, rel_heights=c(2,3), labels=c('','(d)'))
 ```
 
 
@@ -413,13 +419,20 @@ data$enthusiasm <- data$prop_preprint / data$prop_citable
 data <- data[data$senior_author_preprints>=50,]
 ```
 
-#### Figure 2a: Preprint enthusiasm by total citable documents
+#### Figure 2a: Scientific output
 ```r
-scatter <- ggplot(data) +
-  geom_point(aes(x=citable_total, y=enthusiasm)) +
-  geom_hline(yintercept=1, color='red', size=0.2) +
+library(ggrepel)
+
+# we need an "enthusiasm=1" line to draw through the plot, but
+# it's trickier to define with the log scales so this thing just
+# defines the endpoints of the line:
+oneline <- data.frame(x=c(243.1, 16495865), y=c(1,67855))
+scatter <- ggplot() +
+  geom_point(data=data, aes(x=citable_total, y=senior_author_preprints)) +
+  geom_line(data=oneline, aes(x=x, y=y), color='red') +
   geom_text_repel(
-    aes(x=citable_total, y=enthusiasm, label=country),
+    data=data,
+    aes(x=citable_total, y=senior_author_preprints, label=country),
     size=4,
     segment.size = 0.5,
     segment.color = "grey50",
@@ -427,226 +440,55 @@ scatter <- ggplot(data) +
     max.iter = 5000
   ) +
   scale_x_log10(labels=comma) +
-  scale_size_continuous(name='Preprints,\nsenior author', labels=comma) +
-  labs(x='Citable documents', y='bioRxiv enthusiasm') +
+  scale_y_log10(labels=comma) +
+  coord_cartesian(xlim=c(11400,2900000), ylim=c(48,25500)) +
+  labs(x='Citable documents', y='Senior-author preprints') +
   theme_bw() +
   basetheme
 ```
 
-#### Figure 2b: Top preprint enthusiasm
+#### Figure 2b: Preprint enthusiasm
+This panel is actually two plots stuck together. The first plot:
 ```r
-enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm), aes(x=reorder(country, enthusiasm), y=enthusiasm)) +
+enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm),
+        aes(x=reorder(country, enthusiasm) ,y=enthusiasm)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
   coord_flip(ylim=c(0,2.3)) +
-  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  labs(x = "", y = "") +
   theme_bw() +
-  scale_fill_brewer(palette = 'Set2', guide='legend',
-                    aesthetics = c('color','fill')) +
   basetheme +
   theme(
-    plot.margin = margin(0,0,0,0)
+    axis.text.x = element_blank(),
+    plot.margin = unit(c(0,1,-1,0), "lines"),
+    axis.ticks.x = element_blank(),
+    panel.grid.minor = element_blank()
   )
 ```
-
-#### Figure 2c: Bottom preprint enthusiasm
+And the second:
 ```r
 enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(country, enthusiasm), y=enthusiasm)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
   coord_flip(ylim=c(0,2.3)) +
-  labs(x = "Country", y = "bioRxiv enthusiasm") +
+  labs(x = "", y = "bioRxiv enthusiasm") +
   theme_bw() +
-  scale_fill_brewer(palette = 'Set2', guide='legend',
-                    aesthetics = c('color','fill')) +
   basetheme +
   theme(
-    plot.margin = margin(0,0,0,0)
+    plot.margin = margin(0,1,0,0),
+    panel.grid.minor = element_blank()
   )
 ```
 
 #### Compiling Figure 2
 ```r
-layout <- '
-AAAAAB
-AAAAAB
-AAAAAB
-AAAAA#
-AAAAAC
-AAAAAC
-AAAAAC
-'
-wrap_plots(A=scatter,
-  B=enthusiasm_top, C=enthusiasm_bottom,
-  design=layout) + plot_annotation(
-    tag_levels = 'a',
-    tag_prefix = '(',
-    tag_suffix = ')',
-  ) & theme(plot.tag=element_text(face='bold'))
-```
+right <- enthusiasm_top + labs(tag='(b)') + textGrob('(24 other countries...)', gp=gpar(fontface='italic')) + enthusiasm_bottom +
+  plot_layout(nrow=3, heights=c(60,1,60))
 
-### Alternative counting methods
-
-Complete-normalized counting, saved as **Supplemental Table 6**:
-
-```sql
-SELECT completenormalized.country, completenormalized.share AS cn_total,
-  total.preprints AS whole_count
-FROM (
-  SELECT c.name AS country, SUM(1/cpa.authors::decimal) AS share
-  FROM article_authors aa
-  INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-  INNER JOIN institutions i ON ai.institution=i.id
-  INNER JOIN countries c ON i.country=c.alpha2
-  INNER JOIN ( --- authors per article
-    SELECT article, COUNT(DISTINCT id) AS authors
-    FROM article_authors
-    GROUP BY article
-  ) AS cpa ON cpa.article=aa.article
-  GROUP BY c.name
-) AS completenormalized
-LEFT JOIN (
-	SELECT c.name AS country, COUNT(aa.article) AS preprints
-	FROM article_authors aa
-	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN institutions i ON ai.institution=i.id
-	INNER JOIN countries c ON i.country=c.alpha2
-	WHERE aa.id IN (
-		SELECT MAX(id)
-		FROM article_authors
-		GROUP BY article
-	)
-	GROUP BY c.name
-) AS total ON completenormalized.country=total.country
-ORDER BY 3,2
-```
-
-Correlation test between counting methods:
-
-```r
-counts <- read.csv('supp_table06.csv')
-x <- cor.test(counts$cn_total, counts$whole_count)
-x$p.value
+scatter + labs(tag='(a)') + right + plot_layout(ncol=2, widths=c(4,1)) & theme(plot.tag=element_text(face='bold'))
 ```
 
 ## Results: Collaboration
-
-### Figure 3: Collaborators per paper
-Both panels use data from the same query, saved as `collaborators_per_paper.csv`:
-
-```sql
-SELECT aa.article, EXTRACT(month FROM aa.observed) AS month,
-	EXTRACT(year FROM aa.observed) AS year,
-    COUNT(DISTINCT c.name) AS countries,
-    COUNT(DISTINCT aa.id) AS authors
-FROM article_authors aa
-INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN institutions i ON ai.institution=i.id
-INNER JOIN countries c ON i.country=c.alpha2
-GROUP BY 1,2,3
-ORDER BY countries DESC, authors DESC
-```
-
-#### Figure 3a: Authors per paper
-```r
-counts <- read.csv('collaborators_per_paper.csv')
-counts$time <- ((12*(counts$year - 2013))+counts$month)-10
-
-authormeans = data.frame(
-  time=integer(), mean=double(), moving=double()
-)
-for(year in 2013:2019) {
-  for(month in 1:12) {
-    timestamp <- ((12*(year - 2013))+month)-10
-    authormeans <- rbind(authormeans,
-                         c(timestamp,
-                           Hmean(counts[counts$time==timestamp,]$authors),
-                           Hmean(counts[counts$time<=timestamp,]$authors)
-                         )
-    )
-  }
-}
-colnames(authormeans) <- c('time','mean', 'moving')
-
-monthly_authors <- ggplot(authormeans, aes(x=time, y=mean)) +
-  geom_point() +
-  geom_line(aes(x=time, y=moving), color='blue', size=1) +
-  scale_x_continuous(
-    limits=c(1,74),
-    expand=c(0.01, 0.01),
-    breaks = NULL
-  ) +
-  scale_y_continuous(breaks=seq(2.5, 5, 0.5)) +
-  labs(x='Month', y='Authors per preprint (harmonic mean)') +
-  theme_bw() +
-  basetheme +
-  theme(
-    axis.text.x=element_blank(),
-    axis.title.x=element_blank(),
-    plot.margin = unit(c(1,1,1,1), "lines"),
-  )
-
-monthly_authors <- add_year_x(monthly_authors, TRUE, 2.17)
-monthly_authors <- ggplot_gtable(ggplot_build(monthly_authors))
-monthly_authors$layout$clip[monthly_authors$layout$name == "panel"] <- "off"
-```
-
-Correlation between monthly mean authors per paper and time:
-```r
-x <- cor.test(authormeans$time, authormeans$mean, method='pearson')
-x$p.value
-```
-
-#### Figure 3b: Countries per paper
-```r
-countrymeans = data.frame(
-  time=integer(), mean=double(), moving=double()
-)
-for(year in 2013:2019) {
-  for(month in 1:12) {
-    timestamp <- ((12*(year - 2013))+month-10)
-    countrymeans <- rbind(countrymeans,
-                   c(timestamp,
-                     mean(counts[counts$time==timestamp,]$countries),
-                     mean(counts[counts$time<=timestamp,]$countries)
-                   )
-    )
-  }
-}
-colnames(countrymeans) <- c('time','mean', 'moving')
-
-monthly_country <- ggplot(countrymeans) +
-  geom_point(aes(x=time, y=mean)) +
-  geom_line(aes(x=time, y=moving), color='blue', size=1) +
-  scale_x_continuous(
-    limits=c(1,74),
-    expand=c(0.01, 0.01),
-    breaks = NULL
-  ) +
-  #geom_smooth(se=FALSE, method="lm", size=0.75) +
-  labs(x='Month', y='Countries per preprint (arithmetic mean)') +
-  theme_bw() +
-  basetheme +
-  theme(
-    axis.text.x=element_blank(),
-    axis.title.x=element_text(vjust=-4),
-    plot.margin = unit(c(1,1,1,1), "lines"),
-  )
-
-monthly_country <- add_year_x(monthly_country, TRUE, 1.408)
-monthly_country <- ggplot_gtable(ggplot_build(monthly_country))
-monthly_country$layout$clip[monthly_country$layout$name == "panel"] <- "off"
-
-```
-
-#### Compiling Figure 3
-```r
-plot_grid(monthly_authors, monthly_country, nrow=2, ncol=1, align='v')
-```
-Mean countries per paper across all data:
-```r
-tail(countrymeans,1)$moving
-```
 
 Count of preprints with at least two countries:
 
@@ -664,88 +506,131 @@ FROM (
 WHERE countrycount > 1
 ```
 
-
-### Table 2: Contributor countries
-Table 2 is a subset of data from the following query, which is available in full as **Supplementary Table 3**:
+### Figure 3: Contributor countries
+Built using a subset of the data from this query, available in full as **Supplementary Table 3**:
 
 ```sql
-SELECT totals.country, COALESCE(seniorauthor.preprints,0) AS intl_senior_author,
-  COALESCE(anyauthor.preprints,0) AS intl_any_author,
-  totals.preprints AS all_any_author
+SELECT counts.*,
+  (intl_senior_author::decimal)/GREATEST(intl_any_author, 1) AS intl_senior_rate,
+  (intl_any_author::decimal)/all_any_author AS intl_collab_rate,
+  (CASE WHEN (intl_any_author >= 50 AND (intl_senior_author::decimal)/GREATEST(intl_any_author, 1) < 0.2) THEN 'TRUE' ELSE 'FALSE' END) AS contributor
 FROM (
-	SELECT c.name AS country, COUNT(DISTINCT aa.article) AS preprints
-	FROM article_authors aa
-	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN institutions i ON ai.institution=i.id
-	INNER JOIN countries c ON i.country=c.alpha2
-	GROUP BY 1
-) AS totals
-LEFT JOIN (
-	SELECT c.name AS country, COUNT(DISTINCT aa.article) AS preprints
-	FROM article_authors aa
-	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN institutions i ON ai.institution=i.id
-	INNER JOIN countries c ON i.country=c.alpha2
-	WHERE aa.article IN ( --- only include international papers
-		SELECT DISTINCT article
-		FROM (
-			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
-			FROM article_authors aa
-			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-			INNER JOIN institutions i ON ai.institution=i.id
-			INNER JOIN countries c ON i.country=c.alpha2
-			WHERE i.id > 0
-			GROUP BY aa.article
-		) AS countrz
-		WHERE countrycount >= 2
-	)
-	GROUP BY c.name
-) AS anyauthor ON totals.country=anyauthor.country
-LEFT JOIN (
-	SELECT c.name AS country, COUNT(aa.article) AS preprints
-	FROM article_authors aa
-	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN institutions i ON ai.institution=i.id
-	INNER JOIN countries c ON i.country=c.alpha2
-	WHERE aa.id IN ( --- only look at senior-author entries
-		SELECT MAX(id)
-		FROM article_authors
-		GROUP BY article
-	) AND aa.article IN (--- only include international papers
-		SELECT DISTINCT article
-		FROM (
-			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
-			FROM article_authors aa
-			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-			INNER JOIN institutions i ON ai.institution=i.id
-			INNER JOIN countries c ON i.country=c.alpha2
-			WHERE i.id > 0
-			GROUP BY aa.article
-		) AS countrz
-		WHERE countrycount >= 2
-	)
-	GROUP BY c.name
-) AS seniorauthor ON totals.country=seniorauthor.country
-ORDER BY intl_senior_author DESC, intl_any_author DESC
+  SELECT totals.country, totals.alpha2, COALESCE(seniorauthor.preprints,0) AS intl_senior_author,
+    COALESCE(anyauthor.preprints,0) AS intl_any_author,
+    totals.preprints AS all_any_author
+  FROM (
+    SELECT c.name AS country, c.alpha2, COUNT(DISTINCT aa.article) AS preprints
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN institutions i ON ai.institution=i.id
+    INNER JOIN countries c ON i.country=c.alpha2
+    GROUP BY 1,2
+  ) AS totals
+  LEFT JOIN (
+    SELECT c.name AS country, COUNT(DISTINCT aa.article) AS preprints
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN institutions i ON ai.institution=i.id
+    INNER JOIN countries c ON i.country=c.alpha2
+    WHERE aa.article IN ( --- only include international papers
+      SELECT DISTINCT article
+      FROM (
+        SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+        FROM article_authors aa
+        INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+        INNER JOIN institutions i ON ai.institution=i.id
+        INNER JOIN countries c ON i.country=c.alpha2
+        WHERE i.id > 0
+        GROUP BY aa.article
+      ) AS countrz
+      WHERE countrycount >= 2
+    )
+    GROUP BY c.name
+  ) AS anyauthor ON totals.country=anyauthor.country
+  LEFT JOIN (
+    SELECT c.name AS country, COUNT(aa.article) AS preprints
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN institutions i ON ai.institution=i.id
+    INNER JOIN countries c ON i.country=c.alpha2
+    WHERE aa.id IN ( --- only look at senior-author entries
+      SELECT MAX(id)
+      FROM article_authors
+      GROUP BY article
+    ) AND aa.article IN (--- only include international papers
+      SELECT DISTINCT article
+      FROM (
+        SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+        FROM article_authors aa
+        INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+        INNER JOIN institutions i ON ai.institution=i.id
+        INNER JOIN countries c ON i.country=c.alpha2
+        WHERE i.id > 0
+        GROUP BY aa.article
+      ) AS countrz
+      WHERE countrycount >= 2
+    )
+    GROUP BY c.name
+  ) AS seniorauthor ON totals.country=seniorauthor.country
+) AS counts
 ```
 
-### Figure 4: International senior authorship
-
-#### Figure 4a: International preprints against international senior author rate
-Uses the same data as in **Table 2**. Building the panel:
+#### Figure 3a: Map of contributor countries
 
 ```r
 data <- read.csv('supp_table03.csv')
 data <- cleanup_countries(data)
-# limit to countries with > 30 international preprints
-data <- data[data$intl_any_author>30,]
+toplot <- data <- data[data$contributor=='TRUE',]
+toplot <- joinCountryData2Map(data, joinCode = "ISO2",
+                              nameJoinColumn = "alpha2",  mapResolution = "coarse", verbose=TRUE)
 
-a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_author_rate)) +
-  geom_point(aes(color=as.factor(contributor)), size=2.5) +
-  scale_x_log10(labels=comma) +
-  scale_color_manual(values=c('#000000','red')) +
-  labs(x='International preprints, any author', y='% international senior authorship') +
-  geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
+# chop off antarctica
+toplot <- subset(toplot, continent != "Antarctica")
+
+map <- mapCountryData(toplot, nameColumnToPlot = "contributor",
+  catMethod = "logFixedWidth", numCats=6,
+  xlim = NA, ylim = NA, mapRegion = "world",
+  colourPalette = "heat", addLegend = FALSE, borderCol = "black",
+  mapTitle = "",
+  oceanCol = NA, aspect = 1,
+  missingCountryCol = NA, add = FALSE,
+  lwd = 0.5)
+```
+
+#### Figure 3b: International senior author rate
+Panels B through D use this data:
+```r
+data <- read.csv('supp_table03.csv')
+data <- cleanup_countries(data)
+
+# figure out overall rates
+# senior author rate
+overall.sen_rate <- sum(data$intl_senior_author) / sum(data$intl_any_author)
+# international collab rate
+overall.intl_rate <- sum(data$intl_any_author) / sum(data$all_any_author)
+# total preprints
+overall.intl_any <- median(data$intl_any_author)
+
+data <- data[(data$contributor=='TRUE'),]
+
+# add other countries for comparison
+top <- read.csv('supp_table03.csv')
+top <- top_n(top[top$intl_any_author > 50,], 5, intl_senior_rate)
+
+data <- rbind(data, top)
+data <- cleanup_countries(data)
+manual_fill <- scale_fill_manual(values=c("#999999","#E41A1C"))
+```
+Build panel B:
+
+```r
+senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_senior_rate, fill=contributor)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=overall.sen_rate, linetype=2) +
+  coord_flip() +
+  scale_y_continuous(expand=c(0,0), labels=label_percent(accuracy=1)) +
+  labs(x='', y="Internat'l senior author rate") +
+  manual_fill +
   theme_bw() +
   basetheme +
   theme(
@@ -753,10 +638,52 @@ a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_author_rate)) +
   )
 ```
 
-#### Figure 4b: International senior author rate
-*tk
+#### Figure 3c: International collaboration rate
 
-#### Figure 4c: Collaborator countries and senior authorship
+```r
+intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_collab_rate, fill=contributor)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=overall.intl_rate, linetype=2) +
+  coord_flip() +
+  scale_y_continuous(expand=c(0,0), limits=c(0, 1.05), labels=label_percent(accuracy=1)) +
+  labs(x='', y='International collaboration rate') +
+  manual_fill +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none',
+    axis.text.y = element_blank()
+  )
+```
+
+#### Figure 3d: International preprints total
+
+```r
+total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=contributor)) +
+  geom_bar(stat="identity") +
+  coord_flip() +
+  labs(x='', y='International preprints (any author)') +
+  scale_y_continuous(expand=c(0,0), labels=comma) +
+  manual_fill +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none',
+    axis.text.y = element_blank()
+  )
+```
+
+#### Compiling Figure 3
+This builds panels B, C and D; panels A and E were added manually:
+
+```r
+plot_grid(
+  senior_rate, intl_rate, total,
+  ncol=3, nrow=1, labels=c('(b)','(c)','(d)'),
+  hjust=c(-0.75, 0, 0), rel_widths=c(11,8,8))
+```
+
+#### Figure 3e: Collaborator countries and senior authorship
 
 Data for this figure is available as **Supplementary Table 4**, generated with this query:
 
@@ -779,7 +706,7 @@ FROM (
 			FROM article_authors
 			GROUP BY article
 		) AND ---exclude the senior-author papers from contributor countries
-		c.alpha2 NOT IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+		c.alpha2 NOT IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
 	) AS seniors ON aa.article=seniors.article
 	WHERE aa.article IN ( --- only show international papers
 		SELECT DISTINCT article
@@ -800,7 +727,7 @@ FROM (
 		INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
 		INNER JOIN institutions i ON ai.institution=i.id
 		INNER JOIN countries c ON i.country=c.alpha2
-		WHERE c.alpha2 IN ('UG', 'TZ', 'VN', 'HR', 'SK', 'ID', 'TH', 'GR', 'KE', 'BD', 'EG', 'EC', 'EE', 'PE', 'TR', 'BO', 'CZ', 'CO', 'IS')
+		WHERE c.alpha2 IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
 	)
 ) AS intntl
 WHERE senior IS NOT NULL
@@ -819,25 +746,20 @@ data$senior <- as.factor(data$senior)
 
 data$contributor <- as.character(data$contributor)
 data$contributor[data$contributor=='Tanzania, United Republic of'] <-'Tanzania'
-data$contributor[data$contributor=='Bolivia (Plurinational State of),'] <-'Bolivia'
 data$contributor[data$contributor=='Viet Nam'] <-'Vietnam'
 data$contributor <- as.factor(data$contributor)
 
 tokeep <- aggregate(data$count, by=list(countries=data$senior), FUN=sum)
-
-# use these colors for the strata, so they match the senior author colors:
-colors <- c('white','white','white','white','white','white','white','white','white','white',
-            'white','white','white','white','white','white','white','white','white',
-            "#999999","#F781BF","#A65628","#FFFF33","#FF7F00","#984EA3","#4DAF4A","#377EB8","#E41A1C")
-# only include senior countries with > 25 preprints listed
 toplot <- data[data$senior %in% tokeep[tokeep$x > 25,]$countries,]
+# use these colors for the strata, so they match the senior author colors:
+colors <- c(rep('white',18), "#999999","#F781BF","#A65628","#FFFF33","#FF7F00","#984EA3","#4DAF4A","#377EB8","#E41A1C")
+# only include senior countries with > 25 preprints listed
 
-c <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
-  geom_alluvium(aes(fill=senior), width = 1/12) +
+alluvial_plot <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
+  geom_alluvium(aes(fill=senior), width = 1/12, alpha=0.65) +
   geom_stratum(width = 1/6, color = "gray", fill=colors) +
   geom_label(stat = "stratum", infer.label = TRUE) +
   scale_fill_brewer(palette = 'Set1', aesthetics = c('fill')) +
-  #scale_x_continuous(expand=c(0,0)) +
   scale_y_continuous(expand=c(0,0)) +
   theme_void() +
   basetheme +
@@ -850,43 +772,139 @@ c <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
   )
 ```
 
-#### Compiling Figure 4
-```r
-compiled <- (a / b)
-compiled <- compiled | c
-compiled <- compiled + plot_layout(widths=c(1,2))
-compiled + plot_annotation(
-  tag_levels = 'a',
-  tag_prefix = '(',
-  tag_suffix = ')',
-) & theme(plot.tag=element_text(face='bold'))
+#### Evaluating unusually strong links between collaborators and senior authors
+Build a list of unique contries for each preprint, paired with the country of the senior author for that preprint. This is saved as `senior_authors.csv`:
+
+```sql
+SELECT aa.article, seniors.country AS senior, c.name AS country, COUNT(aa.id) AS authors
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+INNER JOIN (
+  SELECT aa.article, c.name AS country
+  FROM article_authors aa
+  INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+  INNER JOIN institutions i ON ai.institution=i.id
+  INNER JOIN countries c ON i.country=c.alpha2
+  WHERE aa.id IN (
+    SELECT MAX(id)
+    FROM article_authors
+    GROUP BY article
+  )
+) AS seniors ON aa.article=seniors.article
+WHERE aa.article IN ( --- only include international papers
+  SELECT DISTINCT article
+  FROM (
+    SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+    FROM article_authors aa
+    INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+    INNER JOIN institutions i ON ai.institution=i.id
+    INNER JOIN countries c ON i.country=c.alpha2
+    WHERE i.id > 0
+    GROUP BY aa.article
+  ) AS countrz
+  WHERE countrycount >= 2
+)
+AND seniors.country != c.name --- ignore collaborators from the senior author's country
+GROUP BY 1,2,3 -- this means we only get one entry per country per article, even if multiple authors on that paper are from the same country
 ```
 
-### Collaborator country patterns
-```r
-data <- read.csv('supp_table03.csv')
-data <- cleanup_countries(data)
-```
-Senior author rate, total papers:
-```r
-cor.test(data$intl_senior_author_rate, data$intl_any_author, method="spearman")
+We also need to find the list of countries that appear as senior author on international preprints that have an author from at least one contributor country:
+```sql
+SELECT senior, COUNT(DISTINCT article)
+FROM (
+	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	LEFT JOIN (
+		SELECT aa.article, c.name AS country
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE aa.id IN ( --- only show entry for senior author on each paper
+			SELECT MAX(id)
+			FROM prod.article_authors
+			GROUP BY article
+		) AND ---exclude the senior-author papers from contributor countries
+		c.alpha2 NOT IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
+	) AS seniors ON aa.article=seniors.article
+	WHERE aa.article IN ( --- only show international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM prod.article_authors aa
+			INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN prod.institutions i ON ai.institution=i.id
+			INNER JOIN prod.countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+			ORDER BY countrycount DESC
+		) AS countrz
+		WHERE countrycount >= 2
+	) AND aa.id IN ( --- list all entries for authors from contributor countries
+		SELECT aa.id
+		FROM prod.article_authors aa
+		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN prod.institutions i ON ai.institution=i.id
+		INNER JOIN prod.countries c ON i.country=c.alpha2
+		WHERE c.alpha2 IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
+	)
+) AS intntl
+WHERE senior IS NOT NULL
+GROUP BY 1
+ORDER BY 2 DESC
 ```
 
-Total papers, international collaboration rate
+Then perform Fisher's exact tests. The results (in the "combos" variable) are available as **Supplementary Table 8**.
 ```r
-cor.test(data$intl_any_author, data$intl_collab_rate, method="spearman")
+papers <- read.csv('senior_authors.csv')
+papers <- cleanup_countries(papers) # note: this ONLY standardizes the contributor countries, not the senior-author ones
+contributors <- c('Uganda', 'Vietnam', 'Tanzania', 'Croatia', 'Slovakia', 'Indonesia', 'Thailand', 'Greece', 'Kenya', 'Bangladesh', 'Egypt', 'Ecuador', 'Estonia', 'Peru', 'Turkey', 'Czechia', 'Colombia', 'Iceland')
+seniors <- c('United States of America','United Kingdom of Great Britain and Northern Ireland','Switzerland','Sweden','Netherlands','Germany','France','Canada','Australia')
+
+totals <- read.csv('supp_table03.csv') # international preprints per country
+overall <- sum(totals$intl_senior_author)
+
+combos <- data.frame(contributor=character(), senior=character(),  p=double(), with=integer(), without=integer(), seniortotal=integer())
+
+for(contributor in contributors) {
+  subset <- papers[papers$country==contributor,]
+  for(senior in seniors) {
+    if(length(subset[subset$senior==senior,]$article) < 10) next # skip links with 5 or fewer papers between a contributor and a senior author country
+    contingency <- c(
+      length(subset[subset$senior==senior,]$article), # collab and senior
+      length(subset[subset$senior!=senior,]$article), # collab, no senior
+      totals[totals$country==senior,]$intl_senior_author - length(subset[subset$senior==senior,]$article), # no collab, senior
+      overall -  totals[totals$country==senior,]$intl_senior_author - length(subset[subset$senior!=senior,]$article) # no collab, no senior
+    )
+    contingency <- matrix(contingency, nrow = 2,
+     dimnames = list(collaborator = c("Contrib", "NoContrib"),
+                    senior = c("AUS", "NoAUS")))
+    fishtest <- fisher.test(contingency, alternative = "greater")
+    entry <- list(
+      contributor=contributor,
+      senior=senior,
+      p = fishtest$p.value,
+      with = length(subset[subset$senior==senior,]$article),
+      without = length(subset[subset$senior!=senior,]$article),
+      seniortotal = totals[totals$country==senior,]$intl_senior_author
+    )
+    combos <- rbind(combos, entry, stringsAsFactors=FALSE)
+  }
+}
+combos$padj <- combos$p * length(combos$contributor)
 ```
 
-International senior author rate and international collaboration rate:
-```r
-cor.test(data$intl_collab_rate, data$intl_senior_author_rate, method="spearman")
-```
 
 ## Results: Preprint outcomes
 
-### Figure 5: Downloads and publication rates
+### Figure 4: Downloads and publication rates
 
-#### Figure 5a: Downloads per preprint
+#### Figure 4a: Downloads per preprint
 
 Data from this query saved as `downloads_per_paper.csv`:
 
@@ -930,7 +948,7 @@ dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downl
   basetheme
 ```
 
-#### Figure 5b: Publication rate and total preprints
+#### Figure 4b: Publication rate and total preprints
 Uses data from \*tc, plus country-level publication data *for preprints last updated prior to 2019*. Data available in **Supplementary Table 5** from this query:
 
 ```sql
@@ -988,7 +1006,7 @@ dload_totals <- ggplot(data, aes(x=preprints, y=downloads)) +
   basetheme
 ```
 
-#### Figure 5c: Median downloads against publication rate
+#### Figure 4c: Median downloads against publication rate
 
 Uses the same data as Figures 5a and 5b. Building the panel:
 
@@ -1003,7 +1021,7 @@ toplot <- cleanup_countries(toplot)
 medians <- aggregate(toplot$downloads, by=list(country=toplot$country), FUN=median)
 colnames(medians) <- c('country','downloads')
 
-# Then publication data
+# Then pull in publication data
 pubs <- read.csv('supp_table05.csv')
 pubs <- cleanup_countries(pubs)
 pubs$pubrate <- pubs$published / pubs$total
@@ -1022,28 +1040,8 @@ pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
   basetheme
 ```
 
-### Download correlations
-(Using data from Figure 5c.) Publication rate and median downloads per preprint:
-```r
-cor.test(medians$downloads, medians$pubrate, method='spearman')
-```
-
-Publication rate and total preprints:
-```r
-dloads <- read.csv('downloads_per_paper.csv')
-dloads <- cleanup_countries(dloads)
-counts <- read.csv('supp_table01.csv')
-counts <- cleanup_countries(counts)
-medians <- ddply(dloads, .(country), summarise, med = median(downloads))
-data <- medians %>% inner_join(counts, by=c("country"="country")) %>%
-  select(country, med, senior_author)
-colnames(data) <- c('country','downloads','preprints')
-data <- data[data$preprints >= 100,]
-cor.test(data$preprints, data$downloads, method='spearman')
-```
-
-#### Figure 5d: Publication rate
-Uses the same data as Figure 5b. Building the panel:
+#### Figure 4d: Publication rate
+Uses the same data as Figure 6b. Building the panel:
 
 ```r
 pubs <- read.csv('supp_table05.csv')
@@ -1058,9 +1056,7 @@ dloads$counting <- 1 # so we can count papers per country
 tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
 colnames(tokeep) <- c('country','preprints')
 tokeep <- tokeep[tokeep$preprints >= 100,]
-
 toplot <- pubs[pubs$country %in% tokeep$country,] %>% select(country,pubrate)
-
 
 pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate)) +
   geom_bar(stat="identity") +
@@ -1072,12 +1068,320 @@ pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pu
   basetheme
 ```
 
-#### Compiling Figure 5
+#### Compiling Figure 4
 
 ```r
 built <- dloadplot | (dload_totals / pubdload) | pubrateplot
 built +
   plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
+```
+
+#### Correlations
+```r
+dloads <- read.csv('downloads_per_paper.csv')
+dloads$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+toplot <- dloads[dloads$country %in% tokeep$country,] %>% select(country,downloads)
+toplot <- cleanup_countries(toplot)
+# calculate downloads per paper:
+medians <- aggregate(toplot$downloads, by=list(country=toplot$country), FUN=median)
+colnames(medians) <- c('country','downloads')
+# then get publication rate
+pubs <- read.csv('supp_table05.csv')
+pubs <- cleanup_countries(pubs)
+pubs$pubrate <- pubs$published / pubs$total
+medians <- medians %>% inner_join(pubs, by=c("country"="country")) %>%
+  select(country,downloads,pubrate)
+
+# also add total preprints:
+totals <- read.csv('supp_table01.csv')
+totals <- cleanup_countries(totals) %>% select(country, senior_author)
+colnames(totals) <- c('country','preprints')
+medians <- medians %>% inner_join(totals, by=c("country"="country")) %>%
+  select(country,downloads,pubrate, preprints)
+
+cor.test(medians$downloads, medians$preprints, method='spearman')
+cor.test(medians$downloads, medians$pubrate, method='spearman')
+```
+
+### Table 2: Journal/country links
+Saved as `preprints_per_journal.csv`:
+
+```sql
+SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+INNER JOIN prod.publications p ON aa.article=p.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+)
+AND aa.observed < '2019-01-01'
+GROUP BY 1,2
+ORDER BY 1,3 DESC
+```
+
+Processing into the table, saved in full as **Supplementary Table 9**:
+```r
+chitest <- function(row) {
+  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
+  return(result$p.value)
+}
+jlinks <- read.csv('country_journals.csv')
+jlinks <- cleanup_countries(jlinks)
+colnames(jlinks) <- c('country','journal','preprints')
+# figure out total preprints per journal
+journal_totals <- ddply(jlinks, .(journal), summarise, journaltotal = sum(preprints))
+# and per country:
+country_totals <- ddply(jlinks, .(country), summarise, journaltotal = sum(preprints))
+# incorporate totals:
+jlinks <- jlinks %>% inner_join(journal_totals, by=c('journal'='journal'))
+jlinks <- jlinks %>% inner_join(country_totals, by=c('country'='country'))
+colnames(jlinks) <- c('country','journal','preprints','journaltotal','countrytotal')
+totalpubs <- sum(jlinks$preprints)
+jlinks <- jlinks[jlinks$country != 'UNKNOWN',]
+# do the testing:
+jlinks$p <- by(jlinks, 1:nrow(jlinks), chitest)
+jlinks$expected <- (jlinks$countrytotal / totalpubs) * jlinks$journaltotal
+jlinks <- jlinks[jlinks$preprints >= 15,]
+
+jlinks$padj <- p.adjust(jlinks$p, method='BH')
+table <- table[table$padj <= 0.05,] %>% select(country, journal, preprints, expected, p, padj, journaltotal, countrytotal)
+```
+
+## Methods
+
+### Alternative counting methods
+
+Complete-normalized counting, saved as **Supplemental Table 6**:
+
+```sql
+SELECT completenormalized.country, completenormalized.share AS cn_total,
+  total.preprints AS whole_count
+FROM (
+  SELECT c.name AS country, SUM(1/cpa.authors::decimal) AS share
+  FROM article_authors aa
+  INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+  INNER JOIN institutions i ON ai.institution=i.id
+  INNER JOIN countries c ON i.country=c.alpha2
+  INNER JOIN ( --- authors per article
+    SELECT article, COUNT(DISTINCT id) AS authors
+    FROM article_authors
+    GROUP BY article
+  ) AS cpa ON cpa.article=aa.article
+  GROUP BY c.name
+) AS completenormalized
+LEFT JOIN (
+	SELECT c.name AS country, COUNT(aa.article) AS preprints
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM article_authors
+		GROUP BY article
+	)
+	GROUP BY c.name
+) AS total ON completenormalized.country=total.country
+ORDER BY 3,2
+```
+
+Correlation test between counting methods:
+
+```r
+counts <- read.csv('supp_table06.csv')
+x <- cor.test(counts$cn_total, counts$whole_count)
+x$p.value
+```
+
+## Supplementary
+
+### Figure S1: Collaborators per paper
+Both panels use data from the same query, saved as `collaborators_per_paper.csv`:
+
+```sql
+SELECT aa.article, EXTRACT(month FROM aa.observed) AS month,
+	EXTRACT(year FROM aa.observed) AS year,
+    COUNT(DISTINCT c.name) AS countries,
+    COUNT(DISTINCT aa.id) AS authors
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+GROUP BY 1,2,3
+ORDER BY countries DESC, authors DESC
+```
+
+#### Figure S1a: Authors per paper
+```r
+counts <- read.csv('collaborators_per_paper.csv')
+counts$time <- ((12*(counts$year - 2013))+counts$month)-10
+
+authormeans = data.frame(
+  time=integer(), mean=double(), moving=double()
+)
+for(year in 2013:2019) {
+  for(month in 1:12) {
+    timestamp <- ((12*(year - 2013))+month)-10
+    authormeans <- rbind(authormeans,
+                         c(timestamp,
+                           Hmean(counts[counts$time==timestamp,]$authors),
+                           Hmean(counts[counts$time<=timestamp,]$authors)
+                         )
+    )
+  }
+}
+colnames(authormeans) <- c('time','mean', 'moving')
+
+monthly_authors <- ggplot(authormeans, aes(x=time, y=mean)) +
+  geom_point() +
+  geom_line(aes(x=time, y=moving), color='blue', size=1) +
+  scale_x_continuous(
+    limits=c(1,74),
+    expand=c(0.01, 0.01),
+    breaks = NULL
+  ) +
+  scale_y_continuous(breaks=seq(2.5, 5, 0.5)) +
+  labs(x='Month', y='Authors per preprint (harmonic mean)') +
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_blank(),
+    axis.title.x=element_blank(),
+    plot.margin = unit(c(1,1,1,1), "lines"),
+  )
+
+monthly_authors <- add_year_x(monthly_authors, TRUE, 2.17)
+monthly_authors <- ggplot_gtable(ggplot_build(monthly_authors))
+monthly_authors$layout$clip[monthly_authors$layout$name == "panel"] <- "off"
+```
+
+Correlation between monthly mean authors per paper and time:
+```r
+x <- cor.test(authormeans$time, authormeans$mean, method='pearson')
+x$p.value
+```
+
+#### Figure S1b: Countries per paper
+```r
+countrymeans = data.frame(
+  time=integer(), mean=double(), moving=double()
+)
+for(year in 2013:2019) {
+  for(month in 1:12) {
+    timestamp <- ((12*(year - 2013))+month-10)
+    countrymeans <- rbind(countrymeans,
+                   c(timestamp,
+                     mean(counts[counts$time==timestamp,]$countries),
+                     mean(counts[counts$time<=timestamp,]$countries)
+                   )
+    )
+  }
+}
+colnames(countrymeans) <- c('time','mean', 'moving')
+
+monthly_country <- ggplot(countrymeans) +
+  geom_point(aes(x=time, y=mean)) +
+  geom_line(aes(x=time, y=moving), color='blue', size=1) +
+  scale_x_continuous(
+    limits=c(1,74),
+    expand=c(0.01, 0.01),
+    breaks = NULL
+  ) +
+  labs(x='Month', y='Countries per preprint (arithmetic mean)') +
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_blank(),
+    axis.title.x=element_text(vjust=-4),
+    plot.margin = unit(c(1,1,1,1), "lines"),
+  )
+
+monthly_country <- add_year_x(monthly_country, TRUE, 1.408)
+monthly_country <- ggplot_gtable(ggplot_build(monthly_country))
+monthly_country$layout$clip[monthly_country$layout$name == "panel"] <- "off"
+
+```
+
+#### Compiling Figure S1
+```r
+plot_grid(monthly_authors, monthly_country,
+  nrow=2, ncol=1, align='v', labels=c('(a)','(b)'))
+```
+
+Mean countries per paper across all data:
+```r
+tail(countrymeans,1)$moving
+```
+
+### Figure S2: Contributor country correlations
+```r
+data <- read.csv('supp_table03.csv')
+data <- cleanup_countries(data)
+data <- data[data$intl_any_author>30,]
+
+cor.test(data$intl_senior_rate, data$intl_any_author, method="spearman")
+cor.test(data$intl_any_author, data$intl_collab_rate, method="spearman")
+cor.test(data$intl_collab_rate, data$intl_senior_rate, method="spearman")
+```
+#### Figure S2a: International authorship compared to total international papers
+```r
+a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_rate)) +
+  geom_point(aes(color=as.factor(contributor)), size=2.5) +
+  scale_x_log10(labels=comma) +
+  scale_color_manual(values=c('#000000','red')) +
+  labs(x='International preprints, any author', y='% international senior authorship') +
+  geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none'
+  )
+```
+
+#### Figure S2b: International authorship compared to international collaboration rate
+```r
+b <- ggplot(data=data, aes(x=intl_any_author, y=intl_collab_rate)) +
+  geom_point(aes(color=as.factor(contributor)), size=2.5) +
+  scale_x_log10(labels=comma) +
+  scale_color_manual(values=c('#000000','red')) +
+  labs(x='International preprints, any author', y='% preprints w/ international collaborators') +
+  geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none'
+  )
+```
+
+#### Figure S2c: International collaboration rate compared to international senior author rate
+```r
+c <- ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate)) +
+  geom_point(aes(color=as.factor(contributor)), size=2.5) +
+  scale_color_manual(values=c('#000000','red')) +
+  labs(x='% preprints w/ international collaborators', y='% international senior authorship') +
+  geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'none'
+  )
+```
+
+#### Compiling Figure S2
+```r
+fig <- a | b | c
+fig + plot_annotation(
     tag_levels = 'a',
     tag_prefix = '(',
     tag_suffix = ')',
