@@ -668,11 +668,11 @@ jlinks$padj <- p.adjust(jlinks$p, method='BH')
 # Supplementary Table 9:
 table <- jlinks[jlinks$padj <= 0.05,] %>% select(country, journal, preprints, expected, p, padj, journaltotal, countrytotal)
 
-# FIGURE 5a: preprints per journal, USA
+# FIGURE 5b: preprints per journal, USA
 newplot <- jlinks[jlinks$country=='United States',]
 newplot$over <- (newplot$preprints - newplot$expected)/newplot$expected
 newplot <- newplot[newplot$expected >= 30,]
-ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05))) +
+bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05))) +
   geom_bar(stat='identity') +
   geom_text(aes(x=reorder(journal,over), y=ifelse(newplot$over > 0, -0.01, 0.01), label=journal),
             hjust=ifelse(newplot$over > 0, 1, 0)) +
@@ -689,82 +689,8 @@ ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05)
     axis.ticks.y = element_blank()
   )
 
-# FIGURE 5b: Country/journal links
+# FIGURE 5a: Country/journal links
 library(tidyr)
-library(corrplot)
-# first, build matrix of p-values
-pdata <- jlinks %>% select(country, journal, padj)
-
-# filter by p value:
-# first find journals with at least one link
-tokeep.journal <- pdata[pdata$padj <= 0.05,]$journal
-pdata <- pdata[pdata$journal %in% tokeep.journal,]
-# then countries with at least one link
-tokeep.country <- pdata[pdata$padj <= 0.05,]$country
-pdata <- pdata[pdata$country %in% tokeep.country,]
-
-pdata <- spread(pdata, country, padj)
-rownames(pdata) <- as.character(pdata$journal)
-
-# then build matrix of journal/country preprint counts
-countdata <- jlinks %>% select(country, journal, preprints)
-countdata <- countdata[countdata$journal %in% tokeep.journal,]
-countdata <- countdata[countdata$country %in% tokeep.country,]
-countdata <- spread(countdata, country, preprints)
-rownames(countdata) <- as.character(countdata$journal)
-
-count_sig <- function(x) {
-  if(is.na(x)) return(0)
-  if(x <= 0.05) {
-    return(1)
-  }
-  return(0)
-}
-linkcounter <- pdata
-linkcounter$journal <- NULL
-linkcounter <- as.data.frame(apply(linkcounter, 1:2, count_sig))
-journallinks <- as.data.frame(rowSums(linkcounter))
-journallinks$journal <- rownames(journallinks)
-rownames(journallinks) <- NULL
-colnames(journallinks) <- c('links','journal')
-
-# add null counts to matrix and sort by them
-countdata <-  countdata %>% inner_join(journallinks, by=c("journal"="journal"))
-countdata <- countdata %>% arrange(-links)
-rownames(countdata) <- as.character(countdata$journal)
-
-countrylinks <- as.data.frame(colSums(linkcounter))
-countrylinks$country <- rownames(countrylinks)
-rownames(countrylinks) <- NULL
-colnames(countrylinks) <- c('links','country')
-countrylinks <- countrylinks %>% arrange(-links)
-
-pdata <-  pdata %>% inner_join(journallinks, by=c("journal"="journal"))
-pdata <- pdata %>% arrange(-links)
-rownames(pdata) <- as.character(pdata$journal)
-
-countdata$journal <- NULL
-countdata$links <- NULL
-pdata$journal <- NULL # chop off column with journal names
-pdata$links <- NULL
-# make all the empty cells "insignificant"
-pdata[is.na(pdata)] <- 1
-countdata[is.na(countdata)] <-15 # workaround for bug (ONLY USE IF WE DON'T DISPLAY NON-SIGNIFICANT NUMBERS)
-
-redblue <- colorRampPalette(c('yellow','yellow','red'))
-
-countplot <- as.matrix(countdata[countrylinks$country])
-pplot <- as.matrix(pdata[countrylinks$country])
-corrplot(countplot,
-  method='shade', is.corr = FALSE, insig='blank', addgrid.col='grey',
-  sig.level = .05, col=redblue(50), na.label=NULL,
-  p.mat=pplot)
-
-
-
-
-
-# LESS AWFUL HEAT MAP
 
 #sizing is p value
 new <- jlinks %>% select(country, journal, preprints, padj)
@@ -792,7 +718,7 @@ yorder <- unique(yorder$journal)
 
 background <- expand.grid(unique(toplot$journal), unique(toplot$country))
 colnames(background) <- c('journal','country')
-ggplot() + 
+heat <- ggplot() + 
   # first the grid:
   geom_tile(data=background, aes(x=country, y=journal, height=1, width=1), color='grey', fill='white') +
   # then the real data:
@@ -807,8 +733,9 @@ ggplot() +
   ) + 
   scale_x_discrete(position = "top", limits=xorder) +
   scale_y_discrete(limits=yorder) +
-  scale_fill_distiller(palette = "Reds", direction=1, trans = "log", labels=label_number(accuracy=1)) +
+  scale_fill_distiller(name='Preprints', palette = "Reds", direction=1, trans = "log", labels=label_number(accuracy=1)) +
   coord_fixed() + # to keep the tiles square
+  labs(x='Country', y='Journal') +
   theme_bw() +
   basetheme +
   theme(
@@ -816,34 +743,81 @@ ggplot() +
     panel.background=element_blank(),
     panel.grid.minor=element_blank(),
     panel.grid.major=element_blank(),
-    axis.ticks = element_blank()
+    axis.ticks = element_blank(),
+    legend.position = c(-1.4,1)
+    #legend.direction = 'horizontal',
+    #legend.key.width=unit(3,"lines")
   )
 
+# compiling figure 5
+# if we don't want the top of the plots to align:
+plot_grid(heat, bar,
+  ncol=2, align='h', axis='b',
+  labels=c('(a)','(b)'),
+  hjust=c(-1, 0.2)
+)
 
-# sizing is PREPRINT COUNT
-new <- jlinks %>% select(country, journal, preprints, padj)
-tokeep.journal <- new[new$padj <= 0.05,]$journal
-tokeep.country <- new[new$padj <= 0.05,]$country
-new <- new[new$country %in% tokeep.country,]
-new <- new[new$journal %in% tokeep.journal,]
 
-quant <- ecdf(new$preprints)
-new$size <- quant(new$preprints)
+# Country/journal links network diagram
+# data manipulation via http://www.sthda.com/english/articles/33-social-network-analysis/135-network-visualization-essentials-in-r/
+library(tidyverse)
+shit <- toplot
+sources <- toplot %>%
+  distinct(country) %>%
+  rename(label = country)
+# Get distinct destination names
+destinations <- toplot %>%
+  distinct(journal) %>%
+  rename(label = journal)
+# Join the two data to create node
+# Add unique ID for each country
+nodes <- full_join(sources, destinations, by = "label") 
+nodes <- nodes %>%
+  mutate(id = 1:nrow(nodes)) %>%
+  select(id, everything())
+head(nodes, 50)
+nodes$type <- c(rep('country',9), rep('journal',46))
 
-ggplot(new[new$padj <= 0.05,], aes(x=country,y=journal, fill=padj,  height=size,  width=size)) + 
-  geom_tile()+
-  #scale_fill_brewer(palette = 'Set1', guide='legend', aesthetics = c('color','fill')) +
-  scale_fill_distiller(palette = "Reds", direction=-1) +
-  #scale_color_distiller(palette = "RdYlGn", direction=1, limits=c(0,1),name="q-value") +
-  #scale_x_continuous("variable", breaks = seq_len(m), labels = colnames(nba)) +
-  #scale_y_continuous("variable", breaks = seq_len(m), labels = colnames(nba), trans="reverse") +
-  coord_fixed() + # to keep the tiles square
-  theme(
-    axis.text.x=element_text(angle=45, vjust=1, hjust=1),
-    #panel.background=element_blank(),
-    #panel.grid.minor=element_blank(),
-  )
+shit <- shit %>%
+  rename(weight = preprints)
+# (a) Join nodes id for source column
+edges <- shit %>% 
+  left_join(nodes, by = c("country" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges <- edges %>% 
+  left_join(nodes, by = c("journal" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges <- select(edges, from, to, weight)
+head(edges, 3)
 
+library(tidygraph)
+net.tidy <- tbl_graph(
+  nodes = nodes,
+  edges = edges,
+  directed = TRUE
+)
+
+library(ggraph)
+set.seed(1)
+ggraph(net.tidy, layout = "grid") + 
+  geom_node_point(aes(color=type), size=5) +
+  geom_edge_link(aes(width = weight), alpha = 0.8) +
+  geom_node_text(aes(label = label), repel = TRUE, check_overlap=T) +
+  scale_edge_width(range = c(0.2, 2), trans='log') +
+  labs(edge_width = "preprints") +
+  theme_graph()
+
+
+set.seed(21)
+ggraph(net.tidy, layout = "lgl") + 
+  geom_edge_link(aes(width = weight), alpha = 0.3) + 
+  geom_node_point(aes(color=type), size=5) +
+  geom_node_label(aes(label = label, fill=type)) +
+  scale_edge_width(range = c(0.2, 2), trans='log') +
+  labs(edge_width = "Preprints") +
+  theme_graph()
 
 
 

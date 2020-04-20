@@ -19,15 +19,21 @@ library(grid)
 library(RColorBrewer)# for pretty
 library(tidyr) # for gather()
 library(ggalluvial) # for alluvial plot
-library(ggrepel) # for the labeled scatter plot
 
-library(dplyr) # for top_n
+library(ggrepel)
+library(plyr) # for summarise
+library(dplyr) # for top_n and select()
+
 library(DescTools) # for harmonic mean
 
 library(rworldmap) # for map of preprints
 
+
+#setwd('/Users/rabdill/code/biorxiv_authors/code/paper/data')
+setwd('/Users/rabdill/code/biorxiv_authors/code/paper')
 themedarktext = "#707070"
 big_fontsize = unit(12, "pt")
+
 basetheme <- theme(
   axis.text.x = element_text(size=big_fontsize, color = themedarktext),
   axis.text.y = element_text(size=big_fontsize, color = themedarktext),
@@ -36,16 +42,20 @@ basetheme <- theme(
   legend.text = element_text(size=big_fontsize, color = themedarktext),
 )
 
+
+yearline = "black"
+yearline_size = 0.5
+yearline_alpha = 1
+yearline_2014 = 8 # position of first year label
+# Adds an x axis with delineations and labels for each year
+# plot: A ggplot object
+# labels: boolean. Whether to include the year numbers.
+# yearlabel: A number indicating a y offset, for vertically positioning the year labels
 add_year_x <- function(plot, labels, yearlabel)
 {
-  # Adds an x axis with delineations and labels for each year.
   # plot: a ggplot object
   # labels: BOOLEAN indicating whether to add labels for each year
-  # yearlabel: INT value indicating where on the y-axis the year labels should fall.
-  yearline = "black"
-  yearline_size = 0.5
-  yearline_alpha = 1
-  yearline_2014 = 8 # position of first year label
+  # yearlabel: value indicating where on the y-axis the year labels should fall.
   x <- plot +
     geom_vline(xintercept=2.5, col=yearline, size=yearline_size, alpha=yearline_alpha) +
     
@@ -80,7 +90,6 @@ add_year_x <- function(plot, labels, yearlabel)
 }
 
 cleanup_countries <- function(matrix) {
-  # converts lengthy country names to shorter versions. accepts a data frame and manipulates the "country" field before returning it.
   matrix$country <- as.character(matrix$country)
   matrix$country[matrix$country=='United States of America'] <- 'United States'
   matrix$country[matrix$country=='United Kingdom of Great Britain and Northern Ireland'] <- 'United Kingdom'
@@ -88,6 +97,11 @@ cleanup_countries <- function(matrix) {
   matrix$country[matrix$country=='Taiwan, Province of China'] <- 'Taiwan'
   matrix$country[matrix$country=='Iran (Islamic Republic of),'] <- 'Iran'
   matrix$country[matrix$country=='Russian Federation'] <- 'Russia'
+  matrix$country[matrix$country=='Bolivia (Plurinational State of),'] <- 'Bolivia'
+  matrix$country[matrix$country=='Venezuela (Bolivarian Republic of),'] <- 'Venezuela'
+  matrix$country[matrix$country=='Tanzania, United Republic of'] <- 'Tanzania'
+  matrix$country[matrix$country=='Viet Nam'] <- 'Vietnam'
+  matrix$country[matrix$country=='Czech Republic'] <- 'Czechia'
   matrix$country <- as.factor(matrix$country)
   return(matrix)
 }
@@ -427,11 +441,12 @@ library(ggrepel)
 # it's trickier to define with the log scales so this thing just
 # defines the endpoints of the line:
 oneline <- data.frame(x=c(243.1, 16495865), y=c(1,67855))
-scatter <- ggplot() +
-  geom_point(data=data, aes(x=citable_total, y=senior_author_preprints)) +
+
+# Panel 2a
+scatter <- ggplot(data) +
+  geom_point(aes(x=citable_total, y=senior_author_preprints, color=enthusiasm)) +
   geom_line(data=oneline, aes(x=x, y=y), color='red') +
   geom_text_repel(
-    data=data,
     aes(x=citable_total, y=senior_author_preprints, label=country),
     size=4,
     segment.size = 0.5,
@@ -441,19 +456,24 @@ scatter <- ggplot() +
   ) +
   scale_x_log10(labels=comma) +
   scale_y_log10(labels=comma) +
+  scale_fill_gradient(limits = c(0,2.2)) +
   coord_cartesian(xlim=c(11400,2900000), ylim=c(48,25500)) +
-  labs(x='Citable documents', y='Senior-author preprints') +
+  labs(x='Citable documents', y='Senior-author preprints', color='bioRxiv enthusiasm') +
   theme_bw() +
-  basetheme
+  basetheme +
+  theme(
+    legend.position=c(0.25,0.8)
+  )
 ```
 
 #### Figure 2b: Preprint enthusiasm
 This panel is actually two plots stuck together. The first plot:
 ```r
 enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm),
-        aes(x=reorder(country, enthusiasm) ,y=enthusiasm)) +
+                         aes(x=reorder(country, enthusiasm), y=enthusiasm, fill=enthusiasm)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
+  scale_fill_gradient(limits = c(0,2.2)) +
   coord_flip(ylim=c(0,2.3)) +
   labs(x = "", y = "") +
   theme_bw() +
@@ -462,21 +482,24 @@ enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm),
     axis.text.x = element_blank(),
     plot.margin = unit(c(0,1,-1,0), "lines"),
     axis.ticks.x = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position = 'none'
   )
 ```
 And the second:
 ```r
-enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(country, enthusiasm), y=enthusiasm)) +
+enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(country, enthusiasm), y=enthusiasm, fill=enthusiasm)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
+  scale_fill_gradient(limits = c(0,2.2)) +
   coord_flip(ylim=c(0,2.3)) +
   labs(x = "", y = "bioRxiv enthusiasm") +
   theme_bw() +
   basetheme +
   theme(
     plot.margin = margin(0,1,0,0),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position='none'
   )
 ```
 
@@ -485,7 +508,7 @@ enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(cou
 right <- enthusiasm_top + labs(tag='(b)') + textGrob('(24 other countries...)', gp=gpar(fontface='italic')) + enthusiasm_bottom +
   plot_layout(nrow=3, heights=c(60,1,60))
 
-scatter + labs(tag='(a)') + right + plot_layout(ncol=2, widths=c(4,1)) & theme(plot.tag=element_text(face='bold'))
+scatter + labs(tag='(a)') + right + plot_layout(ncol=2, widths=c(5,1)) & theme(plot.tag=element_text(face='bold'))
 ```
 
 ## Results: Collaboration
@@ -619,12 +642,14 @@ top <- top_n(top[top$intl_any_author > 50,], 5, intl_senior_rate)
 
 data <- rbind(data, top)
 data <- cleanup_countries(data)
-manual_fill <- scale_fill_manual(values=c("#999999","#E41A1C"))
+data <- arrange(data, -intl_senior_rate)
+data$color <- colors <- c('top1','top2','top1','top2','top1',rep(c('contrib1','contrib2'), 9))
+manual_fill <- scale_fill_manual(values=c('#E41A1C', '#db6363', '#d1d1d1', '#999999'))
 ```
 Build panel B:
 
 ```r
-senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_senior_rate, fill=contributor)) +
+senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_senior_rate, fill=colors)) +
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.sen_rate, linetype=2) +
   coord_flip() +
@@ -634,14 +659,14 @@ senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_se
   theme_bw() +
   basetheme +
   theme(
-    legend.position = 'none'
+   legend.position = 'none'
   )
 ```
 
 #### Figure 3c: International collaboration rate
 
 ```r
-intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_collab_rate, fill=contributor)) +
+intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_collab_rate, fill=colors)) +
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.intl_rate, linetype=2) +
   coord_flip() +
@@ -659,7 +684,7 @@ intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_coll
 #### Figure 3d: International preprints total
 
 ```r
-total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=contributor)) +
+total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=colors)) +
   geom_bar(stat="identity") +
   coord_flip() +
   labs(x='', y='International preprints (any author)') +
@@ -677,8 +702,7 @@ total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_auth
 This builds panels B, C and D; panels A and E were added manually:
 
 ```r
-plot_grid(
-  senior_rate, intl_rate, total,
+plot_grid(senior_rate, intl_rate, total,
   ncol=3, nrow=1, labels=c('(b)','(c)','(d)'),
   hjust=c(-0.75, 0, 0), rel_widths=c(11,8,8))
 ```
@@ -752,14 +776,15 @@ data$contributor <- as.factor(data$contributor)
 tokeep <- aggregate(data$count, by=list(countries=data$senior), FUN=sum)
 toplot <- data[data$senior %in% tokeep[tokeep$x > 25,]$countries,]
 # use these colors for the strata, so they match the senior author colors:
-colors <- c(rep('white',18), "#999999","#F781BF","#A65628","#FFFF33","#FF7F00","#984EA3","#4DAF4A","#377EB8","#E41A1C")
+colors <- c("#8fccff","#005fad","#984EA3","#FF7F00","#4DAF4A","#FFFF33","#999999","#A65628","#F781BF")
+boxes <- c(rep('white',18), rev(colors))
 # only include senior countries with > 25 preprints listed
 
-alluvial_plot <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
+ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
   geom_alluvium(aes(fill=senior), width = 1/12, alpha=0.65) +
-  geom_stratum(width = 1/6, color = "gray", fill=colors) +
+  geom_stratum(width = 1/6, color = "gray", fill=boxes) +
   geom_label(stat = "stratum", infer.label = TRUE) +
-  scale_fill_brewer(palette = 'Set1', aesthetics = c('fill')) +
+  scale_fill_manual(values=colors) +
   scale_y_continuous(expand=c(0,0)) +
   theme_void() +
   basetheme +
@@ -943,7 +968,7 @@ dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downl
   coord_flip(ylim=c(0, 700)) +
   scale_y_continuous(expand=c(0,0)) +
   geom_hline(yintercept=median(dloads$downloads), size=1, color='red') +
-  labs(y='Downloads per preprint', x='Country') +
+  labs(y='Downloads per preprint', x='') +
   theme_bw() +
   basetheme
 ```
@@ -1060,8 +1085,8 @@ toplot <- pubs[pubs$country %in% tokeep$country,] %>% select(country,pubrate)
 
 pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate)) +
   geom_bar(stat="identity") +
-  geom_hline(yintercept=sum(pubdata$published_pre2019)/sum(pubdata$senior_pre2019), color='red', size=1) + # overall
-  labs(y='Proportion published', x='Country') +
+  geom_hline(yintercept=sum(pubs$published)/sum(pubs$total), color='red', size=1) + # overall
+  labs(y='Proportion published', x='') +
   coord_flip() +
   scale_y_continuous(expand=c(0,0), limits=c(0,0.8)) +
   theme_bw() +
@@ -1073,6 +1098,7 @@ pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pu
 ```r
 built <- dloadplot | (dload_totals / pubdload) | pubrateplot
 built +
+  plot_layout(ncol=3, widths=c(3,4,3)) +
   plot_annotation(
     tag_levels = 'a',
     tag_prefix = '(',
@@ -1166,7 +1192,7 @@ Complete-normalized counting, saved as **Supplemental Table 6**:
 
 ```sql
 SELECT completenormalized.country, completenormalized.share AS cn_total,
-  total.preprints AS whole_count
+  total.preprints AS straight_count
 FROM (
   SELECT c.name AS country, SUM(1/cpa.authors::decimal) AS share
   FROM article_authors aa
@@ -1202,6 +1228,148 @@ Correlation test between counting methods:
 counts <- read.csv('supp_table06.csv')
 x <- cor.test(counts$cn_total, counts$whole_count)
 x$p.value
+```
+
+### Figure 5: Journal links
+Data saved as `country_journals.csv`:
+
+```sql
+SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
+FROM prod.article_authors aa
+INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN prod.institutions i ON ai.institution=i.id
+INNER JOIN prod.countries c ON i.country=c.alpha2
+INNER JOIN prod.publications p ON aa.article=p.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM prod.article_authors
+	GROUP BY article
+)
+GROUP BY 1,2
+ORDER BY 1,3 DESC
+```
+
+Setting up the data:
+
+```r
+chitest <- function(row) {
+  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
+  return(result$p.value)
+}
+
+jlinks <- read.csv('country_journals.csv')
+jlinks <- cleanup_countries(jlinks)
+colnames(jlinks) <- c('country','journal','preprints')
+# figure out total preprints per journal
+journal_totals <- ddply(jlinks, .(journal), summarise, journaltotal = sum(preprints))
+# and per country:
+country_totals <- ddply(jlinks, .(country), summarise, journaltotal = sum(preprints))
+# incorporate totals:
+jlinks <- jlinks %>% inner_join(journal_totals, by=c('journal'='journal'))
+jlinks <- jlinks %>% inner_join(country_totals, by=c('country'='country'))
+colnames(jlinks) <- c('country','journal','preprints','journaltotal','countrytotal')
+totalpubs <- sum(jlinks$preprints)
+jlinks <- jlinks[jlinks$country != 'UNKNOWN',]
+jlinks <- jlinks[jlinks$preprints >= 15,] # leave out links without very many preprints
+# do the testing:
+jlinks$p <- by(jlinks, 1:nrow(jlinks), chitest)
+jlinks$expected <- (jlinks$countrytotal / totalpubs) * jlinks$journaltotal
+
+jlinks$padj <- p.adjust(jlinks$p, method='BH')
+```
+
+#### Figure 5a: Country/journal links
+```r
+library(tidyr)
+
+#sizing is p value
+new <- jlinks %>% select(country, journal, preprints, padj)
+tokeep.journal <- new[new$padj <= 0.05,]$journal
+tokeep.country <- new[new$padj <= 0.05,]$country
+new <- new[new$country %in% tokeep.country,]
+new <- new[new$journal %in% tokeep.journal,]
+
+new$size <- 1-new$padj
+quant <- ecdf(new$size)
+new$size <- quant(new$size)
+
+toplot <- new[new$padj <= 0.05,]
+
+# rearrange the axes
+toplot$counting <- 1 # for counting significant links
+journal_totals <- ddply(toplot, .(journal), summarise, journaltotal = sum(counting))
+country_totals <- ddply(toplot, .(country), summarise, countrytotal = sum(counting))
+toplot <- toplot %>% inner_join(journal_totals, by=c('journal'='journal'))
+toplot <- toplot %>% inner_join(country_totals, by=c('country'='country'))
+xorder <- toplot %>% arrange(-countrytotal)
+xorder <- unique(xorder$country)
+yorder <- toplot %>% arrange(journaltotal)
+yorder <- unique(yorder$journal)
+
+background <- expand.grid(unique(toplot$journal), unique(toplot$country))
+colnames(background) <- c('journal','country')
+heat <- ggplot() + 
+  # first the grid:
+  geom_tile(data=background, aes(x=country, y=journal, height=1, width=1), color='grey', fill='white') +
+  # then the real data:
+  geom_tile(data=toplot, # the real boxes
+    aes(
+      x=country,
+      y=journal,
+      #x=reorder(country, -countrytotal),
+      #y=reorder(journal, journaltotal),
+      fill=preprints, height=size, width=size
+    )
+  ) + 
+  scale_x_discrete(position = "top", limits=xorder) +
+  scale_y_discrete(limits=yorder) +
+  scale_fill_distiller(name='Preprints', palette = "Reds", direction=1, trans = "log", labels=label_number(accuracy=1)) +
+  coord_fixed() + # to keep the tiles square
+  labs(x='Country', y='Journal') +
+  theme_bw() +
+  basetheme +
+  theme(
+    axis.text.x=element_text(angle=65, vjust=0, hjust=0),
+    panel.background=element_blank(),
+    panel.grid.minor=element_blank(),
+    panel.grid.major=element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = c(-1.4,1)
+    #legend.direction = 'horizontal',
+    #legend.key.width=unit(3,"lines")
+  )
+```
+
+#### Figure 5b: U.S. overrepresentation
+```r
+newplot <- jlinks[jlinks$country=='United States',]
+newplot$over <- (newplot$preprints - newplot$expected)/newplot$expected
+newplot <- newplot[newplot$expected >= 30,]
+bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05))) +
+  geom_bar(stat='identity') +
+  geom_text(aes(x=reorder(journal,over), y=ifelse(newplot$over > 0, -0.01, 0.01), label=journal),
+            hjust=ifelse(newplot$over > 0, 1, 0)) +
+  geom_hline(yintercept=0, color='black',size=1) +
+  coord_flip() +
+  scale_y_continuous(limits=c(-0.5, 0.77), breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0)) +
+  labs(y='Overrepresentation of United States',x='Journal') +
+  theme_bw() +
+  basetheme +
+  scale_fill_manual(values=c('#999999','red')) +
+  theme(
+    legend.position='none',
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+```
+
+#### Compiling Figure 5
+```r
+plot_grid(heat, bar,
+  ncol=2, align='h', axis='b',
+  labels=c('(a)','(b)'),
+  hjust=c(-1, 0.2)
+)
 ```
 
 ## Supplementary
