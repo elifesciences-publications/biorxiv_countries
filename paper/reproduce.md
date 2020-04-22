@@ -530,7 +530,7 @@ WHERE countrycount > 1
 ```
 
 ### Figure 3: Contributor countries
-Built using a subset of the data from this query, available in full as **Supplementary Table 3**:
+Built using a subset of the data from this query, available in full as **Supplementary Table 9**:
 
 ```sql
 SELECT counts.*,
@@ -601,7 +601,7 @@ FROM (
 #### Figure 3a: Map of contributor countries
 
 ```r
-data <- read.csv('supp_table03.csv')
+data <- read.csv('supp_table09.csv')
 data <- cleanup_countries(data)
 toplot <- data <- data[data$contributor=='TRUE',]
 toplot <- joinCountryData2Map(data, joinCode = "ISO2",
@@ -623,7 +623,7 @@ map <- mapCountryData(toplot, nameColumnToPlot = "contributor",
 #### Figure 3b: International senior author rate
 Panels B through D use this data:
 ```r
-data <- read.csv('supp_table03.csv')
+data <- read.csv('supp_table09.csv')
 data <- cleanup_countries(data)
 
 # figure out overall rates
@@ -637,7 +637,7 @@ overall.intl_any <- median(data$intl_any_author)
 data <- data[(data$contributor=='TRUE'),]
 
 # add other countries for comparison
-top <- read.csv('supp_table03.csv')
+top <- read.csv('supp_table09.csv')
 top <- top_n(top[top$intl_any_author > 50,], 5, intl_senior_rate)
 
 data <- rbind(data, top)
@@ -709,7 +709,7 @@ plot_grid(senior_rate, intl_rate, total,
 
 #### Figure 3e: Collaborator countries and senior authorship
 
-Data for this figure is available as **Supplementary Table 4**, generated with this query:
+Data for this figure is available as **Supplementary Table 3**, generated with this query:
 
 ```sql
 SELECT contributor, senior, COUNT(DISTINCT article)
@@ -761,7 +761,7 @@ GROUP BY 1,2
 Building the panel:
 
 ```r
-data=read.csv('supp_table04.csv')
+data=read.csv('supp_table03.csv')
 data <- data[data$senior != 'UNKNOWN',]
 data$senior <- as.character(data$senior) # switch it so we can reset some more easily
 data$senior[data$senior=='United States of America'] <-'United\nStates'
@@ -884,14 +884,14 @@ GROUP BY 1
 ORDER BY 2 DESC
 ```
 
-Then perform Fisher's exact tests. The results (in the "combos" variable) are available as **Supplementary Table 8**.
+Then perform Fisher's exact tests. The results (in the "combos" variable) are available as **Supplementary Table 4**.
 ```r
 papers <- read.csv('senior_authors.csv')
 papers <- cleanup_countries(papers) # note: this ONLY standardizes the contributor countries, not the senior-author ones
 contributors <- c('Uganda', 'Vietnam', 'Tanzania', 'Croatia', 'Slovakia', 'Indonesia', 'Thailand', 'Greece', 'Kenya', 'Bangladesh', 'Egypt', 'Ecuador', 'Estonia', 'Peru', 'Turkey', 'Czechia', 'Colombia', 'Iceland')
 seniors <- c('United States of America','United Kingdom of Great Britain and Northern Ireland','Switzerland','Sweden','Netherlands','Germany','France','Canada','Australia')
 
-totals <- read.csv('supp_table03.csv') # international preprints per country
+totals <- read.csv('supp_table09.csv') # international preprints per country
 overall <- sum(totals$intl_senior_author)
 
 combos <- data.frame(contributor=character(), senior=character(),  p=double(), with=integer(), without=integer(), seniortotal=integer())
@@ -1060,6 +1060,7 @@ pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
     limits=c(193,400),
     breaks=seq(200,400,50)
   ) +
+  scale_y_continuous(labels=label_percent(accuracy=1)) +
   labs(x='Downloads per preprint', y='Publication rate') +
   theme_bw() +
   basetheme
@@ -1083,14 +1084,17 @@ colnames(tokeep) <- c('country','preprints')
 tokeep <- tokeep[tokeep$preprints >= 100,]
 toplot <- pubs[pubs$country %in% tokeep$country,] %>% select(country,pubrate)
 
-pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate)) +
+pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate, fill=pubrate)) +
   geom_bar(stat="identity") +
   geom_hline(yintercept=sum(pubs$published)/sum(pubs$total), color='red', size=1) + # overall
-  labs(y='Proportion published', x='') +
+  labs(y='Publication rate', x='') +
   coord_flip() +
-  scale_y_continuous(expand=c(0,0), limits=c(0,0.8)) +
+  scale_y_continuous(expand=c(0,0), limits=c(0,0.8), labels=label_percent(accuracy=1)) +
   theme_bw() +
-  basetheme
+  basetheme +
+  theme(
+    legend.position='none'
+  )
 ```
 
 #### Compiling Figure 4
@@ -1156,7 +1160,7 @@ GROUP BY 1,2
 ORDER BY 1,3 DESC
 ```
 
-Processing into the table, saved in full as **Supplementary Table 9**:
+Processing into the table, saved in full as **Supplementary Table 6**:
 ```r
 chitest <- function(row) {
   result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
@@ -1188,7 +1192,7 @@ table <- table[table$padj <= 0.05,] %>% select(country, journal, preprints, expe
 
 ### Alternative counting methods
 
-Complete-normalized counting, saved as **Supplemental Table 6**:
+Complete-normalized counting, saved as **Supplemental Table 7**:
 
 ```sql
 SELECT completenormalized.country, completenormalized.share AS cn_total,
@@ -1225,7 +1229,7 @@ ORDER BY 3,2
 Correlation test between counting methods:
 
 ```r
-counts <- read.csv('supp_table06.csv')
+counts <- read.csv('supp_table07.csv')
 x <- cor.test(counts$cn_total, counts$whole_count)
 x$p.value
 ```
@@ -1280,8 +1284,6 @@ jlinks$padj <- p.adjust(jlinks$p, method='BH')
 
 #### Figure 5a: Country/journal links
 ```r
-library(tidyr)
-
 #sizing is p value
 new <- jlinks %>% select(country, journal, preprints, padj)
 tokeep.journal <- new[new$padj <= 0.05,]$journal
@@ -1351,7 +1353,8 @@ bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <
             hjust=ifelse(newplot$over > 0, 1, 0)) +
   geom_hline(yintercept=0, color='black',size=1) +
   coord_flip() +
-  scale_y_continuous(limits=c(-0.5, 0.77), breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0)) +
+  scale_y_continuous(limits=c(-0.5, 0.77),
+      breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0), label=percent) +
   labs(y='Overrepresentation of United States',x='Journal') +
   theme_bw() +
   basetheme +
@@ -1492,9 +1495,38 @@ Mean countries per paper across all data:
 tail(countrymeans,1)$moving
 ```
 
+#### International preprints per year
+```sql
+SELECT total.year, total.preprints AS total, intl.preprints AS intl
+FROM (
+	SELECT EXTRACT(YEAR FROM aa.observed) AS year, COUNT(DISTINCT aa.article) AS preprints
+	FROM article_authors aa
+	GROUP BY 1
+) AS total
+LEFT JOIN (
+	SELECT EXTRACT(YEAR FROM aa.observed) AS year, COUNT(DISTINCT aa.article) AS preprints
+	FROM article_authors aa
+	WHERE aa.article IN (--- only include international papers
+		SELECT DISTINCT article
+		FROM (
+		SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+		FROM article_authors aa
+		INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN institutions i ON ai.institution=i.id
+		INNER JOIN countries c ON i.country=c.alpha2
+		WHERE i.id > 0
+		GROUP BY aa.article
+		) AS countrz
+		WHERE countrycount >= 2
+	)
+	GROUP BY 1
+) AS intl ON total.year=intl.year
+ORDER BY 1 ASC
+```
+
 ### Figure S2: Contributor country correlations
 ```r
-data <- read.csv('supp_table03.csv')
+data <- read.csv('supp_table09.csv')
 data <- cleanup_countries(data)
 data <- data[data$intl_any_author>30,]
 
