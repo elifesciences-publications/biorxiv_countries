@@ -412,7 +412,7 @@ plot_grid(
 ```
 
 
-### Figure 2: Preprint enthusiasm
+### Figure 2: Preprint adoption
 
 Data for all panels in this figure are available in **Supplementary Table 2**, which was compiled by adding the senior-author totals from Supplementary Table 1 to data scraped from Scimago. Loading the dataset and calculating the proportions:
 ```r
@@ -425,11 +425,11 @@ data$country <- as.factor(data$country)
 
 data$prop_citable <- data$citable_total / sum(data$citable_total)
 data$prop_preprint <- data$senior_author_preprints / 67885
-data$enthusiasm <- data$prop_preprint / data$prop_citable
+data$adoption <- data$prop_preprint / data$prop_citable
 # NOTE: We don't use a live sum of the preprints because this table
 # excludes 9000+ "UNKNOWN" preprints
 
-# only reduce the list AFTER calculating enthusiasm so the total citable documents includes everyone
+# only reduce the list AFTER calculating adoption so the total citable documents includes everyone
 data <- data[data$senior_author_preprints>=50,]
 ```
 
@@ -437,14 +437,14 @@ data <- data[data$senior_author_preprints>=50,]
 ```r
 library(ggrepel)
 
-# we need an "enthusiasm=1" line to draw through the plot, but
+# we need an "adoption=1" line to draw through the plot, but
 # it's trickier to define with the log scales so this thing just
 # defines the endpoints of the line:
 oneline <- data.frame(x=c(243.1, 16495865), y=c(1,67855))
 
 # Panel 2a
 scatter <- ggplot(data) +
-  geom_point(aes(x=citable_total, y=senior_author_preprints, color=enthusiasm)) +
+  geom_point(aes(x=citable_total, y=senior_author_preprints, color=adoption)) +
   geom_line(data=oneline, aes(x=x, y=y), color='red') +
   geom_text_repel(
     aes(x=citable_total, y=senior_author_preprints, label=country),
@@ -458,7 +458,7 @@ scatter <- ggplot(data) +
   scale_y_log10(labels=comma) +
   scale_fill_gradient(limits = c(0,2.2)) +
   coord_cartesian(xlim=c(11400,2900000), ylim=c(48,25500)) +
-  labs(x='Citable documents', y='Senior-author preprints', color='bioRxiv enthusiasm') +
+  labs(x='Citable documents', y='Senior-author preprints', color='bioRxiv adoption') +
   theme_bw() +
   basetheme +
   theme(
@@ -466,11 +466,11 @@ scatter <- ggplot(data) +
   )
 ```
 
-#### Figure 2b: Preprint enthusiasm
+#### Figure 2b: Preprint adoption bar plot
 This panel is actually two plots stuck together. The first plot:
 ```r
-enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm),
-                         aes(x=reorder(country, enthusiasm), y=enthusiasm, fill=enthusiasm)) +
+adoption_top <- ggplot(data=top_n(data, 10, adoption),
+                         aes(x=reorder(country, adoption), y=adoption, fill=adoption)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
   scale_fill_gradient(limits = c(0,2.2)) +
@@ -488,12 +488,12 @@ enthusiasm_top <- ggplot(data=top_n(data, 10, enthusiasm),
 ```
 And the second:
 ```r
-enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(country, enthusiasm), y=enthusiasm, fill=enthusiasm)) +
+adoption_bottom <- ggplot(data=top_n(data, -10, adoption), aes(x=reorder(country, adoption), y=adoption, fill=adoption)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
   scale_fill_gradient(limits = c(0,2.2)) +
   coord_flip(ylim=c(0,2.3)) +
-  labs(x = "", y = "bioRxiv enthusiasm") +
+  labs(x = "", y = "bioRxiv adoption") +
   theme_bw() +
   basetheme +
   theme(
@@ -505,7 +505,7 @@ enthusiasm_bottom <- ggplot(data=top_n(data, -10, enthusiasm), aes(x=reorder(cou
 
 #### Compiling Figure 2
 ```r
-right <- enthusiasm_top + labs(tag='(b)') + textGrob('(24 other countries...)', gp=gpar(fontface='italic')) + enthusiasm_bottom +
+right <- adoption_top + labs(tag='(b)') + textGrob('(24 other countries...)', gp=gpar(fontface='italic')) + adoption_bottom +
   plot_layout(nrow=3, heights=c(60,1,60))
 
 scatter + labs(tag='(a)') + right + plot_layout(ncol=2, widths=c(5,1)) & theme(plot.tag=element_text(face='bold'))
@@ -1342,6 +1342,42 @@ heat <- ggplot() +
   )
 ```
 
+Building the legend for tile size:
+```r
+scaledata <- data.frame(
+  country=c(''),
+  journal=c('0.05','0.01','0.001'),
+  size=c(quant(1-0.05), quant(1-0.01), quant(1-0.001))
+)
+heatscale <- ggplot() + 
+  # first the grid:
+  geom_tile(data=scaledata, aes(x=country, y=journal, height=1, width=1), color='black', fill='white') +
+  # then the real data:
+  geom_tile(data=scaledata, # the real boxes
+            aes(
+              x=country,
+              y=journal,
+              fill=max(toplot$preprints), height=size, width=size
+            )
+  ) + 
+  scale_fill_distiller(name='Preprints', palette = "Reds", direction=1, trans = "log", labels=label_number(accuracy=1)) +
+  coord_fixed() + # to keep the tiles square
+  scale_x_discrete(position = "top") +
+  scale_y_discrete(position = "right") +
+  labs(x='q-value', y='') +
+  theme_void() +
+  basetheme +
+  theme(
+    axis.title.x=element_text(vjust=0, hjust=0, color='black'),
+    axis.text.x=element_text(hjust=1),
+    panel.background=element_blank(),
+    panel.grid.minor=element_blank(),
+    panel.grid.major=element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = 'none'
+  )
+```
+
 #### Figure 5b: U.S. overrepresentation
 ```r
 newplot <- jlinks[jlinks$country=='United States',]
@@ -1369,10 +1405,10 @@ bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <
 #### Compiling Figure 5
 ```r
 plot_grid(heat, bar,
-  ncol=2, align='h', axis='b',
-  labels=c('(a)','(b)'),
-  hjust=c(-1, 0.2)
-)
+          ncol=2, align='h', axis='b',
+          labels=c('(a)','(b)'),
+          hjust=c(-1, 0.2)
+) + draw_plot(heatscale, x=0.04, y=0.8212, width=0.1, height=0.1)
 ```
 
 ## Supplementary

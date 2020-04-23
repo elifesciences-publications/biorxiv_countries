@@ -134,10 +134,10 @@ class Spider(object):
       resp = self.session.get(f"{url}.article-metrics", timeout=10)
     except Exception as e:
       if retry_count < 3:
-        self.log.record(f"Error requesting article metrics. Retrying: {e}", "error")
+        self.log.record(f"Error requesting article authors. Retrying: {e}", "error")
         return self.get_article_authors(url, retry_count+1)
       else:
-        self.log.record(f"Error AGAIN requesting article metrics. Bailing: {e}", "error")
+        self.log.record(f"Error AGAIN requesting article authors. Bailing: {e}", "error")
         return (None, None)
     if resp.status_code != 200:
       self.log.record(f"  Got weird status code: {resp.status_code}", 'warn')
@@ -197,24 +197,6 @@ class Spider(object):
         self.log.record(f"  Recorded author {a.name} with ID {a.id}", "info")
         to_write.append((article_id, a.id))
 
-  def record_author_links(self, entry, canonical):
-    """
-    When we figure out which canonical author ID should be linked to a paper's author,
-    this records that info in all the places we keep track of the info
-    """
-    with self.connection.db.cursor() as cursor:
-      # link the paper:
-      cursor.execute("INSERT INTO prod.canonical_author VALUES (%s, %s)", (entry.id, canonical))
-      # add new names:
-      nopunc, nomi = helpers.Trim_name(entry.name)
-      cursor.execute("""
-        INSERT INTO prod.author_names (author, name, name_nopunc, name_nomi)
-        VALUES (%s, %s, LOWER(%s), LOWER(%s))
-        ON CONFLICT DO NOTHING
-      """, (canonical, entry.name, nopunc, nomi))
-      # add institution
-      cursor.execute("INSERT INTO prod.author_institutions (author, institution) VALUES (%s, %s) ON CONFLICT DO NOTHING", (canonical, entry.affiliation))
-
   def _record_canonical_name(self, to_record, affiliation):
     """Helper function for canonical_names function below.
 
@@ -228,7 +210,7 @@ class Spider(object):
 
   def canonical_names(self, max_calls=10000):
     """Interacts with a local deployment of the ROR database to determine institution names
-
+      from affiliation strings.
     """
     todo = []
     with self.connection.db.cursor() as cursor:
@@ -250,21 +232,6 @@ class Spider(object):
       ) AS asdf
       LIMIT %s
       """, (max_calls,))
-      # (There may be lots of authors not linked to an institution
-      # if their affiliation string is empty.)
-
-      # institutions listed on any preprint:
-      # cursor.execute(f"""
-      #   SELECT DISTINCT(affiliation)
-      #   FROM(
-      #     SELECT a.affiliation, i.institution AS canonical
-      #     FROM prod.article_authors a
-      #     LEFT JOIN prod.affiliation_institutions i ON a.affiliation=i.affiliation
-      #     WHERE i.institution IS NULL
-      #     ORDER BY a.observed DESC
-      #   ) AS asdf
-      #   LIMIT %s
-      # """, (max_calls,))
 
       for record in cursor:
         if len(record) > 0:
@@ -320,7 +287,7 @@ class Spider(object):
           self._record_canonical_name(exists_id[0], affiliation)
           continue
 
-        self.log.record(f"\n\n\n\n  !!!Adding new institution: {answer['name']}!\n\n\n\n!!!!\n\n", 'info')
+        self.log.record(f"\n\n\n\n  !!!Adding new institution: {answer['name']}!\n!!!!", 'info')
         cursor.execute(f"""
           INSERT INTO {config.authordb['schema']}.institutions (name, ror, grid, country)
           VALUES (%s, %s, %s, %s)
