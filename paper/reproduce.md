@@ -974,7 +974,7 @@ dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downl
 ```
 
 #### Figure 4b: Publication rate and total preprints
-Uses data from \*tc, plus country-level publication data *for preprints last updated prior to 2019*. Data available in **Supplementary Table 5** from this query:
+Uses data from Figure 4a, plus country-level publication data *for preprints last updated prior to 2019*. Data available in **Supplementary Table 5** from this query:
 
 ```sql
 SELECT totalpre2019.country, totalpre2019.preprints AS total, COALESCE(publishedpre2019.preprints,0) AS published
@@ -1033,7 +1033,7 @@ dload_totals <- ggplot(data, aes(x=preprints, y=downloads)) +
 
 #### Figure 4c: Median downloads against publication rate
 
-Uses the same data as Figures 5a and 5b. Building the panel:
+Uses the same data as Figures 4a and 4c. Building the panel:
 
 ```r
 dloads <- read.csv('downloads_per_paper.csv')
@@ -1189,6 +1189,41 @@ table <- table[table$padj <= 0.05,] %>% select(country, journal, preprints, expe
 ```
 
 ## Methods
+
+### Countries of first and last author
+
+Count of how many preprints have country data for the first and last author, AND that they are different countries:
+
+```sql
+SELECT COUNT(DISTINCT first.article)
+FROM (
+	SELECT aa.article, c.name
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	WHERE aa.id IN (
+		SELECT MIN(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+) AS first
+INNER JOIN (
+	SELECT aa.article, c.name
+	FROM prod.article_authors aa
+	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN prod.institutions i ON ai.institution=i.id
+	INNER JOIN prod.countries c ON i.country=c.alpha2
+	WHERE aa.id IN (
+		SELECT MAX(id)
+		FROM prod.article_authors
+		GROUP BY article
+	)
+) AS last ON first.article=last.article
+WHERE first.name != last.name
+AND first.name != 'UNKNOWN'
+AND last.name != 'UNKNOWN'
+```
 
 ### Alternative counting methods
 
