@@ -83,7 +83,7 @@ UPDATE prod.affiliation_institutions SET institution=1283 WHERE institution<>40 
 --- Chinese institute unrecognized
 UPDATE prod.affiliation_institutions SET institution=549 WHERE affiliation LIKE '%Watson Institute of Genome Sciences%';
 
---- "Illumnia" is recognized but not Illumina Inc
+--- "Illumina" is recognized but not Illumina Inc
 UPDATE prod.affiliation_institutions SET institution=4787 WHERE institution=0 AND affiliation LIKE '%Illumina%';
 
 --- Center for the Unknown
@@ -375,3 +375,231 @@ UPDATE prod.institutions SET ror='https://ror.org/05q3vnk25', grid='grid.4399.7'
 
 --- PNAS is reported in bioRxiv as two different names
 UPDATE publications SET journal='PNAS' WHERE journal='Proceedings of the National Academy of Sciences'
+
+
+
+--- REVISION CORRECTIONS START HERE ---------------
+--- Chan Zuckerburg
+UPDATE prod.affiliation_institutions SET institution=2571 WHERE institution=0 AND affiliation LIKE '%Chan Zuckerburg%';
+
+--- Institut für Populationsgenetik is at Vetmeduni Vienna
+UPDATE prod.affiliation_institutions SET institution=1722 WHERE institution=0 AND affiliation LIKE '%Populationsgenetik%';
+
+UPDATE prod.affiliation_institutions SET institution=1722 WHERE institution=0 AND affiliation LIKE '%Vetmeduni%';
+
+--- All "Collaborative Innovation Center" affiliations are in China
+UPDATE prod.affiliation_institutions SET institution=1028 WHERE institution=0 AND affiliation LIKE '%Collaborative Innovation Center%';
+
+--- Africa City of Technology
+UPDATE prod.affiliation_institutions SET institution=11522 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%africa city of technology%');
+
+--- National Centre for Biological Science in Bangalore
+UPDATE prod.affiliation_institutions SET institution=72 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%National Centre for Biological Sciences%');
+
+--- Leibniz neurobiology
+UPDATE prod.affiliation_institutions SET institution=3250 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Center for Behavioral Brain Sciences%');
+
+--- Center in Chile
+UPDATE prod.affiliation_institutions SET institution=6832 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%invasal%');
+
+--- Center in Belgium
+UPDATE prod.affiliation_institutions SET institution=250 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%VIB%');
+
+--- Microsoft Research bylines almost all in USA
+--- INSERT INTO prod.institutions (name, ror, grid, country) VALUES ('Microsoft (United States)','https://ror.org/00d0nc645','grid.419815.0','US')
+UPDATE prod.affiliation_institutions SET institution=11576 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%microsoft%');
+
+--- Center at Max Planck Institute
+UPDATE prod.affiliation_institutions SET institution=2232 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Center for Systems Biology%dresden%');
+
+--- Network of Leibniz research institutes all in Germany
+UPDATE prod.affiliation_institutions SET institution=10979 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%leibniz%');
+
+--- Center at Berlin Brandenburg Institute of Advanced Biodiversity Research
+UPDATE prod.affiliation_institutions SET institution=1144 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Berlin % for Genomics%');
+
+--- technical university of berlin
+UPDATE prod.affiliation_institutions SET institution=1150 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Technische%berlin%');
+
+--- German Cancer Consortium
+UPDATE prod.affiliation_institutions SET institution=710 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%German Cancer%');
+
+--- Barts/London School of Medicine
+UPDATE prod.affiliation_institutions SET institution=202 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%London School of Medicine%');
+
+---------- CITY/COUNTRY AFFILIATIONS START HERE
+
+--- Strasbourg France
+UPDATE prod.affiliation_institutions SET institution=2723 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Strasbourg%');
+
+--- Quebec Canada
+UPDATE prod.affiliation_institutions SET institution=2450 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Qu_bec%');
+
+--- San Martin, Peru
+--- INSERT INTO prod.institutions (name, ror, grid, country) VALUES ('Universidad Nacional de San Martin','https://ror.org/02h7fsz12','grid.441968.6','PE')
+UPDATE prod.affiliation_institutions SET institution=11577 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%San Mart_n%') AND LOWER(affiliation) NOT LIKE LOWER('%San Martino%')
+
+--- Bohemia (Czechia)
+UPDATE prod.affiliation_institutions SET institution=4377 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%South Bohemia%');
+
+--- Jiangsu China
+UPDATE prod.affiliation_institutions SET institution=4857 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Jiangsu%');
+
+--- Qingdao China
+UPDATE prod.affiliation_institutions SET institution=2917 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Qingdao%');
+
+--- All "Jerusalem" mentions are from same university
+UPDATE prod.affiliation_institutions SET institution=57 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Hebrew University of Jerusalem%');
+
+--- Potsdam Germany
+UPDATE prod.affiliation_institutions SET institution=1317 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Potsdam%');
+
+--- Vigo Spain
+UPDATE prod.affiliation_institutions SET institution=39 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Universidad%Vigo%');
+
+--- Abu Dhabi UAE
+UPDATE prod.affiliation_institutions SET institution=5019 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Abu Dhabi%');
+
+---  New York USA
+UPDATE prod.affiliation_institutions SET institution=497 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%New York%');
+
+---  Shanghai China
+UPDATE prod.affiliation_institutions SET institution=1940 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Shanghai%');
+
+---  Seattle USA
+UPDATE prod.affiliation_institutions SET institution=4130 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Seattle%');
+
+---  Gothenburg Sweden
+UPDATE prod.affiliation_institutions SET institution=1546 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Gothenburg%');
+
+---  University in Helsinki Finland
+UPDATE prod.affiliation_institutions SET institution=99 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Folkh_lsan%');
+
+---  Munich Germany
+UPDATE prod.affiliation_institutions SET institution=209 WHERE (LOWER(affiliation) LIKE LOWER('%Munich%') OR LOWER(affiliation) LIKE LOWER('%M_nchen%')) AND institution=0
+
+---  Alabama USA
+UPDATE prod.affiliation_institutions SET institution=3437 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Alabama%');
+
+---  Wisconsin USA
+UPDATE prod.affiliation_institutions SET institution=499 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Wisconsin%');
+
+---  Berlin Germany
+UPDATE prod.affiliation_institutions SET institution=465 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Berlin%');
+
+---  Zhejiang China
+UPDATE prod.affiliation_institutions SET institution=549 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Zhejiang%');
+
+---  Netherlands
+UPDATE prod.affiliation_institutions SET institution=4566 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Netherlands%');
+
+---  Austria
+UPDATE prod.affiliation_institutions SET institution=167 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Austria%');
+
+---  Frankfurt Germany
+UPDATE prod.affiliation_institutions SET institution=711 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Frankfurt%');
+
+---  Paris France
+UPDATE prod.affiliation_institutions SET institution=16 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Paris%');
+
+---  Iowa USA
+UPDATE prod.affiliation_institutions SET institution=95 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('% Iowa%');
+
+---  Freiburg Germany
+UPDATE prod.affiliation_institutions SET institution=452 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Freiburg%');
+
+--- Canada
+UPDATE prod.affiliation_institutions SET institution=742 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Canada%');
+
+--- Pennsylvania USA
+UPDATE prod.affiliation_institutions SET institution=20 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Pennsylvania%');
+
+--- Leuven Belgium
+UPDATE prod.affiliation_institutions SET institution=250 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Leuven%');
+
+--- Puerto Rico USA
+UPDATE prod.affiliation_institutions SET institution=1580 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Puerto Rico%');
+
+--- New Jersey USA
+UPDATE prod.affiliation_institutions SET institution=1085 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%New Jersey%');
+
+--- Uppsala Sweden
+UPDATE prod.affiliation_institutions SET institution=74 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Uppsala%');
+
+--- Mongolia
+UPDATE prod.affiliation_institutions SET institution=3322 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Mongolia%') AND LOWER(affiliation) NOT LIKE LOWER('%Inner Mongolia%')
+
+--- Inner Mongolia, China
+UPDATE prod.affiliation_institutions SET institution=1102 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Mongolia%');
+
+--- Virginia USA
+UPDATE prod.affiliation_institutions SET institution=1208 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Virginia%');
+
+--- India
+UPDATE prod.affiliation_institutions SET institution=17 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%India%');
+
+--- Shandong China
+UPDATE prod.affiliation_institutions SET institution=2213 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Shandong%');
+
+--- British Columbia, Canada
+UPDATE prod.affiliation_institutions SET institution=1061 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%British Columbia%');
+
+--- Beijing China
+UPDATE prod.affiliation_institutions SET institution=1112 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Beijing%');
+
+--- China
+UPDATE prod.affiliation_institutions SET institution=1102 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%China%');
+
+--- Nanjing China
+UPDATE prod.affiliation_institutions SET institution=1386 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Nanjing%');
+
+--- Amsterdam Netherlands
+UPDATE prod.affiliation_institutions SET institution=127 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Amsterdam%');
+
+--- Lots of affiliations in Shenzhen
+UPDATE prod.affiliation_institutions SET institution=2089 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%shenzhen%');
+
+--- Poitiers France
+UPDATE prod.affiliation_institutions SET institution=5193 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Poitiers%');
+
+--- Zurich Switzerland
+UPDATE prod.affiliation_institutions SET institution=669 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Zurich%');
+
+--- Trento Italy
+UPDATE prod.affiliation_institutions SET institution=611 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Trento%');
+
+--- Kumamoto Japan
+UPDATE prod.affiliation_institutions SET institution=2066 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Kumamoto%');
+
+--- Denmark
+UPDATE prod.affiliation_institutions SET institution=966 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Denmark%');
+
+--- Malaysia
+UPDATE prod.affiliation_institutions SET institution=4 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Malaysia%');
+
+--- Russia
+UPDATE prod.affiliation_institutions SET institution=83 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Russia%');
+
+--- Thailand
+UPDATE prod.affiliation_institutions SET institution=3595 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Thailand%');
+
+--- Poland
+UPDATE prod.affiliation_institutions SET institution=3031 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Poland%');
+
+--- South Korea
+UPDATE prod.affiliation_institutions SET institution=3681 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Korea%');
+
+--- New Zealand
+UPDATE prod.affiliation_institutions SET institution=8401 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%New Zealand%');
+
+--- Washington, USA (multiple)
+UPDATE prod.affiliation_institutions SET institution=152 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Washington%');
+
+--- Lisbon, Portugal
+UPDATE prod.affiliation_institutions SET institution=963 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Lisboa%');
+
+--- Boston, USA
+UPDATE prod.affiliation_institutions SET institution=1329 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Boston%');
+
+--- Boston, USA
+UPDATE prod.affiliation_institutions SET institution=1329 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Boston%');
