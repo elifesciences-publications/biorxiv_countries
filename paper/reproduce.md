@@ -28,8 +28,6 @@ library(DescTools) # for harmonic mean
 
 library(rworldmap) # for map of preprints
 
-
-#setwd('/Users/rabdill/code/biorxiv_authors/code/paper/data')
 setwd('/Users/rabdill/code/biorxiv_authors/code/paper')
 themedarktext = "#707070"
 big_fontsize = unit(12, "pt")
@@ -163,38 +161,57 @@ Uses same data as Table 1. Plotting map:
 data <- read.csv('supp_table01.csv', header = TRUE, stringsAsFactors = FALSE) %>%
   dplyr::select(alpha2, senior_author)
 colnames(data) <- c('country','value')
-toplot <- joinCountryData2Map(data, joinCode = "ISO2",
-                              nameJoinColumn = "country",  mapResolution = "coarse", verbose=TRUE)
+# brew install udunits
+# install.packages('udunits2', type = 'source', repo = 'cran.rstudio.com')
+# library(devtools)
+# devtools::install_github('edzer/units', type = 'source')
+# brew install gdal
+# install.packages('sf')
+# install.packages('rnaturalearth')
+# install.packages("rnaturalearthdata")
+# install.packages('rgeos')
+library(rnaturalearth)
+library(sf)
+library(scales)
+my_world <- ne_countries(scale='medium', returnclass = 'sf') %>%
+  rename(alpha2 = 'iso_a2') %>%
+  left_join(data, by = 'alpha2')
 
-# chop off antarctica
-toplot <- subset(toplot, continent != "Antarctica")
+to_plot <- my_world[-12,] # chop off antarctica
 
-map <- mapCountryData(toplot, nameColumnToPlot = "value",
-  catMethod = "logFixedWidth", numCats=6,
-  xlim = NA, ylim = NA, mapRegion = "world",
-  colourPalette = "heat", addLegend = FALSE, borderCol = "grey",
-  mapTitle = "",
-  oceanCol = NA, aspect = 1,
-  missingCountryCol = NA, add = FALSE,
-  lwd = 0.5)
+legendplot <- ggplot(data = toplot) +
+  geom_sf(aes(fill = senior_author), color='grey', size=0.1) +
+  coord_sf(crs = "+proj=eqearth +wktext") + # changes the projection
+  scale_fill_gradientn(
+    trans="log10",
+    colors=rev(heat.colors(7)),
+    na.value='white',
+    breaks=c(1,100,1000,10000)
+  ) +
+  labs(fill='Total preprints')
 
-x <- do.call(
-  addMapLegend,
-  c( map, legendLabels="all",
-     horizontal=FALSE,
-     legendShrink = 0.3,
-     legendIntervals='page',
-     legendMar=60, # move it closer to the continents
-     legendWidth=0.7,
-     labelFontSize=0.85,
-     digits=1
-     #tcl=-1.2 # tick mark
+plotted <- ggplot(data = toplot) +
+  geom_sf(aes(fill = senior_author), color='grey', size=0.1) +
+  coord_sf(crs = "+proj=eqearth +wktext") + # changes the projection
+  scale_fill_gradientn(
+    trans="log10",
+    colors=rev(heat.colors(7)),
+    na.value='white',
+    breaks=c(1,100,1000,10000)
+  ) +
+  labs(fill='Total preprints') +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                        color = "grey"), 
+        legend.position = 'none',
+        panel.border = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
   )
-)
+
+map <- ggdraw() + draw_plot(plotted) +
+  draw_plot(get_legend(legendplot), x = -0.35, y = -0.1)
 ```
-Panel 1a is the only figure panel not arranged in R—it was exported separately and joined with the rest of the figure afterward.
-
-
 
 #### Figure 1b: Preprints per country, senior author
 Uses the same data as Figure 1d. Building the panel:
@@ -210,7 +227,7 @@ senior <- ggplot(
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0), breaks=seq(0,30000,8000), labels=comma) +
   coord_flip(ylim=c(0,28000)) +
-  labs(x = "", y = "Preprints, senior author") +
+  labs(x = "", y = "Proportion of total preprints, senior author") +
   theme_bw() +
   scale_fill_brewer(palette = 'Set1', guide='legend',
                     aesthetics = c('color','fill')) +
@@ -598,58 +615,36 @@ FROM (
 ) AS counts
 ```
 
-#### Figure 3a: Map of contributor countries
-
+#### Figure 3a: International senior author rate
+Panels A through C use this data:
 ```r
-data <- read.csv('supp_table09.csv')
-data <- cleanup_countries(data)
-toplot <- data <- data[data$contributor=='TRUE',]
-toplot <- joinCountryData2Map(data, joinCode = "ISO2",
-                              nameJoinColumn = "alpha2",  mapResolution = "coarse", verbose=TRUE)
-
-# chop off antarctica
-toplot <- subset(toplot, continent != "Antarctica")
-
-map <- mapCountryData(toplot, nameColumnToPlot = "contributor",
-  catMethod = "logFixedWidth", numCats=6,
-  xlim = NA, ylim = NA, mapRegion = "world",
-  colourPalette = "heat", addLegend = FALSE, borderCol = "black",
-  mapTitle = "",
-  oceanCol = NA, aspect = 1,
-  missingCountryCol = NA, add = FALSE,
-  lwd = 0.5)
-```
-
-#### Figure 3b: International senior author rate
-Panels B through D use this data:
-```r
-data <- read.csv('supp_table09.csv')
-data <- cleanup_countries(data)
+contribs <- read.csv('supp_table09.csv')
+contribs <- cleanup_countries(contribs)
 
 # figure out overall rates
 # senior author rate
-overall.sen_rate <- sum(data$intl_senior_author) / sum(data$intl_any_author)
+overall.sen_rate <- sum(contribs$intl_senior_author) / sum(contribs$intl_any_author)
 # international collab rate
-overall.intl_rate <- sum(data$intl_any_author) / sum(data$all_any_author)
+overall.intl_rate <- sum(contribs$intl_any_author) / sum(contribs$all_any_author)
 # total preprints
-overall.intl_any <- median(data$intl_any_author)
+overall.intl_any <- median(contribs$intl_any_author)
 
-data <- data[(data$contributor=='TRUE'),]
+contribs <- contribs[(contribs$contributor=='TRUE'),]
 
 # add other countries for comparison
 top <- read.csv('supp_table09.csv')
 top <- top_n(top[top$intl_any_author > 50,], 5, intl_senior_rate)
 
-data <- rbind(data, top)
-data <- cleanup_countries(data)
-data <- arrange(data, -intl_senior_rate)
-data$color <- colors <- c('top1','top2','top1','top2','top1',rep(c('contrib1','contrib2'), 9))
+contribs <- rbind(contribs, top)
+contribs <- cleanup_countries(contribs)
+contribs <- arrange(contribs, -intl_senior_rate)
+contribs$color <- colors <- c('top1','top2','top1','top2','top1',rep(c('contrib1','contrib2'), 9))
 manual_fill <- scale_fill_manual(values=c('#E41A1C', '#db6363', '#d1d1d1', '#999999'))
 ```
 Build panel B:
 
 ```r
-senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_senior_rate, fill=colors)) +
+senior_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_senior_rate, fill=colors)) +
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.sen_rate, linetype=2) +
   coord_flip() +
@@ -663,15 +658,15 @@ senior_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_se
   )
 ```
 
-#### Figure 3c: International collaboration rate
+#### Figure 3b: International collaboration rate
 
 ```r
-intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_collab_rate, fill=colors)) +
+intl_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_collab_rate, fill=colors)) +
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.intl_rate, linetype=2) +
   coord_flip() +
   scale_y_continuous(expand=c(0,0), limits=c(0, 1.05), labels=label_percent(accuracy=1)) +
-  labs(x='', y='International collaboration rate') +
+  labs(x='', y="Internat'l collaboration rate") +
   manual_fill +
   theme_bw() +
   basetheme +
@@ -681,13 +676,13 @@ intl_rate <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_coll
   )
 ```
 
-#### Figure 3d: International preprints total
+#### Figure 3c: International preprints total
 
 ```r
-total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=colors)) +
+total <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=colors)) +
   geom_bar(stat="identity") +
   coord_flip() +
-  labs(x='', y='International preprints (any author)') +
+  labs(x='', y="Internat'l preprints (any author)") +
   scale_y_continuous(expand=c(0,0), labels=comma) +
   manual_fill +
   theme_bw() +
@@ -698,16 +693,7 @@ total <- ggplot(data, aes(x=reorder(country, -intl_senior_rate), y=intl_any_auth
   )
 ```
 
-#### Compiling Figure 3
-This builds panels B, C and D; panels A and E were added manually:
-
-```r
-plot_grid(senior_rate, intl_rate, total,
-  ncol=3, nrow=1, labels=c('(b)','(c)','(d)'),
-  hjust=c(-0.75, 0, 0), rel_widths=c(11,8,8))
-```
-
-#### Figure 3e: Collaborator countries and senior authorship
+#### Figure 3d: Collaborator countries and senior authorship
 
 Data for this figure is available as **Supplementary Table 3**, generated with this query:
 
@@ -780,7 +766,7 @@ colors <- c("#8fccff","#005fad","#984EA3","#FF7F00","#4DAF4A","#FFFF33","#999999
 boxes <- c(rep('white',18), rev(colors))
 # only include senior countries with > 25 preprints listed
 
-ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
+alluvial <- ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
   geom_alluvium(aes(fill=senior), width = 1/12, alpha=0.65) +
   geom_stratum(width = 1/6, color = "gray", fill=boxes) +
   geom_label(stat = "stratum", infer.label = TRUE) +
@@ -795,6 +781,17 @@ ggplot(toplot, aes(y = count, axis1=contributor, axis2=senior)) +
     axis.title.y=element_blank(),
     plot.margin = unit(c(1,0,1,0.25), "lines")
   )
+```
+
+#### Compiling Figure 3
+```r
+senior_rate + intl_rate + total + alluvial +
+  plot_layout(ncol=4, widths=c(1,1,1,2)) +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
 ```
 
 #### Evaluating unusually strong links between collaborators and senior authors
@@ -931,7 +928,7 @@ combos$padj <- combos$p * length(combos$contributor)
 
 #### Figure 4a: Downloads per preprint
 
-Data from this query saved as `downloads_per_paper.csv`:
+Data from this query saved as `downloads_per_paper.csv` and includes ONLY downloads for each preprint's first three months online:
 
 ```sql
 SELECT aa.article, dloads.downloads, c.name AS country
@@ -941,7 +938,18 @@ INNER JOIN institutions i ON ai.institution=i.id
 INNER JOIN countries c ON i.country=c.alpha2
 INNER JOIN (
 	SELECT article, SUM(pdf) AS downloads
-	FROM article_traffic
+	FROM (
+    SELECT article, pdf
+    FROM (
+      SELECT *,
+        rank() OVER (
+          PARTITION BY article
+          ORDER BY year ASC, month ASC
+        )
+      FROM article_traffic
+    ) AS ordered_data
+    WHERE rank <= 3
+  ) AS top3
 	GROUP BY 1
 ) AS dloads ON aa.article=dloads.article
 WHERE aa.id IN (
@@ -1595,7 +1603,38 @@ LEFT JOIN (
 ORDER BY 1 ASC
 ```
 
-### Figure S2: Contributor country correlations
+#### Figure 3, figure supplement 1: Map of contributor countries
+
+```r
+data <- read.csv('supp_table09.csv')
+data <- cleanup_countries(data)
+data <- data[data$contributor=='TRUE',]
+
+my_world <- ne_countries(scale='medium', returnclass = 'sf') %>%
+  rename(alpha2 = 'iso_a2') %>%
+  left_join(data, by = 'alpha2')
+
+to_plot <- my_world[-12,] # chop off antarctica
+
+ggplot(data = to_plot) +
+  geom_sf(aes(fill = contributor), color='black', size=0.1) +
+  coord_sf(crs = "+proj=eqearth +wktext") + # changes the projection
+  scale_fill_manual(
+    values=c('red'),
+    na.translate=TRUE,
+    na.value='#ffffff'
+  ) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                        color = "grey"), 
+        legend.position = 'none',
+        panel.border = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
+  )
+```
+
+### Figure 3, figure supplement 2: Contributor country correlations
 ```r
 data <- read.csv('supp_table09.csv')
 data <- cleanup_countries(data)
@@ -1605,7 +1644,7 @@ cor.test(data$intl_senior_rate, data$intl_any_author, method="spearman")
 cor.test(data$intl_any_author, data$intl_collab_rate, method="spearman")
 cor.test(data$intl_collab_rate, data$intl_senior_rate, method="spearman")
 ```
-#### Figure S2a: International authorship compared to total international papers
+#### Figure 3, figure supplement 2a: International authorship compared to total international papers
 ```r
 a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
@@ -1620,7 +1659,7 @@ a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_rate)) +
   )
 ```
 
-#### Figure S2b: International authorship compared to international collaboration rate
+#### Figure 3, figure supplement 2b: International authorship compared to international collaboration rate
 ```r
 b <- ggplot(data=data, aes(x=intl_any_author, y=intl_collab_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
@@ -1635,7 +1674,7 @@ b <- ggplot(data=data, aes(x=intl_any_author, y=intl_collab_rate)) +
   )
 ```
 
-#### Figure S2c: International collaboration rate compared to international senior author rate
+#### Figure 3, figure supplement 2c: International collaboration rate compared to international senior author rate
 ```r
 c <- ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
@@ -1649,7 +1688,7 @@ c <- ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate)) +
   )
 ```
 
-#### Compiling Figure S2
+#### Compile Figure 3, figure supplement 2
 ```r
 fig <- a | b | c
 fig + plot_annotation(

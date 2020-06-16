@@ -427,6 +427,9 @@ UPDATE prod.affiliation_institutions SET institution=710 WHERE institution=0 AND
 --- Barts/London School of Medicine
 UPDATE prod.affiliation_institutions SET institution=202 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%London School of Medicine%');
 
+--- South Korean startup
+UPDATE prod.affiliation_institutions SET institution=3681 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Tomocube%');
+
 ---------- CITY/COUNTRY AFFILIATIONS START HERE
 
 --- Strasbourg France
@@ -601,5 +604,93 @@ UPDATE prod.affiliation_institutions SET institution=963 WHERE institution=0 AND
 --- Boston, USA
 UPDATE prod.affiliation_institutions SET institution=1329 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Boston%');
 
---- Boston, USA
-UPDATE prod.affiliation_institutions SET institution=1329 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Boston%');
+--- Italy
+UPDATE prod.affiliation_institutions SET institution=553 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Italian%');
+
+--- Negev Israel
+UPDATE prod.affiliation_institutions SET institution=1515 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Negev%');
+
+--- Tasmania Australia
+UPDATE prod.affiliation_institutions SET institution=3446 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Tasmania%');
+
+--- Massachusetts USA
+UPDATE prod.affiliation_institutions SET institution=175 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Massachusetts%');
+
+--- Norway
+UPDATE prod.affiliation_institutions SET institution=2343 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Norwegian%');
+
+--- Granada Spain
+UPDATE prod.affiliation_institutions SET institution=574 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Granada%');
+
+--- Qatari center
+UPDATE prod.affiliation_institutions SET institution=4397 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Sidra%');
+
+--- Texas, USA
+UPDATE prod.affiliation_institutions SET institution=2084 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Texas%');
+
+------ Word frequency based edits begin here
+--- Almost all Cambridge strings are in the UK
+UPDATE prod.affiliation_institutions SET institution=31 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Cambridge%');
+
+--- Genentech is in California USA
+UPDATE prod.affiliation_institutions SET institution=974 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%genentech%');
+
+--- Chinese in China
+UPDATE prod.affiliation_institutions SET institution=352 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%chinese%');
+
+--- CSIR in India
+UPDATE prod.affiliation_institutions SET institution=17 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%csir%');
+
+--- London in UK
+UPDATE prod.affiliation_institutions SET institution=88 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%london%');
+
+--- Stanford in USA
+UPDATE prod.affiliation_institutions SET institution=453 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Stanford%');
+
+--- "UK " in UK
+UPDATE prod.affiliation_institutions SET institution=88 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%uk %');
+
+--- Hebrew University in Israel
+UPDATE prod.affiliation_institutions SET institution=57 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%hebrew univ%');
+
+--- Goethe University in Germany
+UPDATE prod.affiliation_institutions SET institution=711 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Goethe%');
+
+--- CNRS in France
+UPDATE prod.affiliation_institutions SET institution=2856 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%cnrs%');
+
+--- CSIC in Spain
+UPDATE prod.affiliation_institutions SET institution=1611 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%csic%');
+
+--- San Francisco in USA
+UPDATE prod.affiliation_institutions SET institution=974 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%san francisco%');
+
+--- California in USA
+UPDATE prod.affiliation_institutions SET institution=974 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%California%');
+
+--- Wake Forest in USA
+UPDATE prod.affiliation_institutions SET institution=2184 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Wake Forest%');
+
+--- Guangdong in China
+UPDATE prod.affiliation_institutions SET institution=4430 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Guangdong%');
+
+--- Icahn School in USA
+UPDATE prod.affiliation_institutions SET institution=212 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%icahn%');
+
+--- Barcelona in Spain
+UPDATE prod.affiliation_institutions SET institution=672 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Barcelona%');
+
+--- Switzerland
+UPDATE prod.affiliation_institutions SET institution=1226 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%swiss%');
+
+--- Penn State in USA
+UPDATE prod.affiliation_institutions SET institution=474 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Penn%');
+
+--- Imperial College in UK
+UPDATE prod.affiliation_institutions SET institution=302 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%Imperial%');
+
+--- Palo Alto in USA
+UPDATE prod.affiliation_institutions SET institution=8279 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%palo alto%');
+
+--- Fox Chase Cancer Center in USA
+UPDATE prod.affiliation_institutions SET institution=2069 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%fox chase%');
