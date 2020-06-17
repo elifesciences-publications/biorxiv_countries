@@ -694,3 +694,658 @@ UPDATE prod.affiliation_institutions SET institution=8279 WHERE institution=0 AN
 
 --- Fox Chase Cancer Center in USA
 UPDATE prod.affiliation_institutions SET institution=2069 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%fox chase%');
+
+--- Monash U in Australia
+UPDATE prod.affiliation_institutions SET institution=559 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%monash%');
+
+--- Heinrich Heine U in Germany
+UPDATE prod.affiliation_institutions SET institution=1551 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%heine%');
+
+--- Calico (company) in California
+UPDATE prod.affiliation_institutions SET institution=974 WHERE institution=0 AND LOWER(affiliation) LIKE LOWER('%calico%');
+
+
+----- DOING EMAIL CORRECTIONS STARTS HERE
+--- first, we add a field with the originally scraped affiliations
+--ALTER TABLE article_authors ADD COLUMN original_affiliation text;
+--UPDATE article_authors SET original_affiliation = affiliation;
+
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: United Arab Emirates'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.ae'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Argentina'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.ar'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Austria'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.at'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Australia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.au'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Bangladesh'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.bd'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Belgium'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.be'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Bulgaria'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.bg'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Brazil'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.br'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Canada'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ca'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Catalonia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.cat'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Switzerland'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ch'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Chile'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.cl'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: China'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%.cn'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Colombia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.co'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Cyprus'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.cy'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Czechia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.cz'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Germany'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.de'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Denmark'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.dk'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: United States'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.edu'
+
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Estonia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ee'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Spain'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.es'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Finland'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.fi'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: France'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.fr'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Ghana'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.gh'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: United States'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.gov'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Greece'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.gr'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Hong Kong'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.hk'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Croatia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.hr'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Hungary'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.hu'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Indonesia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.id'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Ireland'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ie'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Israel'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.il'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: India'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.in'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Iran'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ir'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Italy'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.it'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Japan'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.jp'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: South Korea'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.kr'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Luxembourg'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.lu'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Macau'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.mo'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Mexico'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.mx'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Malaysia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.my'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Netherlands'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.nl'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Norway'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.no'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: New Zealand'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.nz'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Poland'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.pl'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Portugal'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.pt'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Qatar'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.qa'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Romania'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ro'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Russia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ru'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Saudi Arabia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.sa'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Sweden'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.se'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Singapore'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.sg'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Slovenia'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.si'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Turkey'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.tr'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Taiwan'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.tw'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: Ukraine'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.ua'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: United Kingdom'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.uk'
+)
+
+UPDATE article_authors
+SET affiliation='EMAIL INFERENCE: South Africa'
+WHERE id IN (
+	SELECT aa.id
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	WHERE ai.institution=0 AND
+	aa.email LIKE '%\.za'
+)
+
+----- Then we add the affiliation associations for the new affiliations:
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Argentina',307);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Australia',30);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Austria',21);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Bangladesh',989);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Belgium',211);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Brazil',207);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Bulgaria',1823);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Canada',9);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Catalonia',76);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Chile',560);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: China',141);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Colombia',345);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Croatia',668);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Cyprus',3441);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Czechia',25);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Denmark',782);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Estonia',3407);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Finland',86);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: France',15);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Germany',18);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Ghana',609);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Greece',361);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Hong Kong',141);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Hungary',353);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: India',72);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Indonesia',604);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Iran',118);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Ireland',87);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Israel',22);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Italy',541);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Japan',238);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Luxembourg',43);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Macau',1897);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Malaysia',4);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Mexico',786);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Netherlands',127);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: New Zealand',736);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Norway',217);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Poland',125);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Portugal',190);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Qatar',1618);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Romania',148);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Russia',83);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Saudi Arabia',728);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Singapore',1);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Slovenia',354);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: South Africa',287);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: South Korea',579);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Spain',76);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Sweden',74);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Switzerland',320);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Taiwan',119);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Turkey',651);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: Ukraine',6477);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United Arab Emirates',3379);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United Kingdom',31);
+INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United States',7);

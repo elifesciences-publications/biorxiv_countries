@@ -26,9 +26,7 @@ library(dplyr) # for top_n and select()
 
 library(DescTools) # for harmonic mean
 
-library(rworldmap) # for map of preprints
-
-setwd('/Users/rabdill/code/biorxiv_authors/code/paper')
+setwd('/Users/rabdill/code/biorxiv_countries/code/paper/figures')
 themedarktext = "#707070"
 big_fontsize = unit(12, "pt")
 
@@ -111,20 +109,6 @@ Total preprints in analysis:
 SELECT COUNT(DISTINCT article) FROM article_authors;
 ```
 
-Total countries with at least one senior-author preprint:
-```sql
-SELECT COUNT(DISTINCT i.country)
-FROM article_authors aa
-INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN institutions i ON ai.institution=i.id
-WHERE aa.id IN (
-	SELECT MAX(id)
-	FROM article_authors
-	GROUP BY article
-)
-AND i.country != 'UNKNOWN'
-```
-
 ### Table 1: Preprints per country
 (Truncated list appears as Table 1; full list appears as **Supplementary Table 1**.)
 ```sql
@@ -160,7 +144,7 @@ Uses same data as Table 1. Plotting map:
 ```r
 data <- read.csv('supp_table01.csv', header = TRUE, stringsAsFactors = FALSE) %>%
   dplyr::select(alpha2, senior_author)
-colnames(data) <- c('country','value')
+
 # brew install udunits
 # install.packages('udunits2', type = 'source', repo = 'cran.rstudio.com')
 # library(devtools)
@@ -177,9 +161,9 @@ my_world <- ne_countries(scale='medium', returnclass = 'sf') %>%
   rename(alpha2 = 'iso_a2') %>%
   left_join(data, by = 'alpha2')
 
-to_plot <- my_world[-12,] # chop off antarctica
+toplot <- my_world[-12,] # chop off antarctica
 
-legendplot <- ggplot(data = toplot) +
+legendplot <- ggplot(toplot) +
   geom_sf(aes(fill = senior_author), color='grey', size=0.1) +
   coord_sf(crs = "+proj=eqearth +wktext") + # changes the projection
   scale_fill_gradientn(
@@ -190,8 +174,8 @@ legendplot <- ggplot(data = toplot) +
   ) +
   labs(fill='Total preprints')
 
-plotted <- ggplot(data = toplot) +
-  geom_sf(aes(fill = senior_author), color='grey', size=0.1) +
+plotted <- ggplot(data=toplot) +
+  geom_sf(aes(fill=senior_author), color='grey', size=0.1) +
   coord_sf(crs = "+proj=eqearth +wktext") + # changes the projection
   scale_fill_gradientn(
     trans="log10",
@@ -217,9 +201,9 @@ map <- ggdraw() + draw_plot(plotted) +
 Uses the same data as Figure 1d. Building the panel:
 
 ```r
-monthframe=read.csv('preprints_over_time.csv')
+monthframe=read.csv('../preprints_over_time.csv')
 data <- monthframe[monthframe$month=='2019-12',]
-
+data <- cleanup_countries(data)
 senior <- ggplot(
   data=data,
   aes(x=reorder(country, running_total), y=running_total, fill=country)
@@ -277,7 +261,7 @@ Building the panel:
 data <- read.csv('supp_table01.csv')
 data <- cleanup_countries(data[1:8,])
 data$country <- as.character(data$country)
-data <- rbind(data, data.frame(alpha2=NA, country='OTHER',senior_author=10000,any_author=25331)) # dummy value for "senior author"
+data <- rbind(data, data.frame(alpha2=NA, country='OTHER',senior_author=10000,any_author=26247)) # dummy value for "senior author"
 data$country <- as.factor(data$country)
 
 any <- ggplot(
@@ -365,7 +349,7 @@ ORDER BY month ASC, country ASC
 Building the panel:
 
 ```r
-monthframe=read.csv('preprints_over_time.csv')
+monthframe=read.csv('../preprints_over_time.csv')
 monthframe <- cleanup_countries(monthframe)
 labelx <- 76
 labelsize <- unit(10, "pt")
@@ -386,25 +370,25 @@ time <- ggplot(monthframe, aes(x=month, y=running_total,
   ) +
   annotation_custom(
     grob = textGrob(label = "UNKNOWN", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.07, ymax = 0.07, xmin = labelx, xmax = labelx) +
+    ymin = 0.04, ymax = 0.04, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "United States", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.35, ymax = 0.35, xmin = labelx, xmax = labelx) +
+    ymin = 0.3, ymax = 0.3, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "United Kingdom", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.57, ymax = 0.57, xmin = labelx, xmax = labelx) +
+    ymin = 0.52, ymax = 0.52, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "OTHER", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.72, ymax = 0.72, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "Germany", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.85, ymax = 0.85, xmin = labelx, xmax = labelx) +
+    ymin = 0.83, ymax = 0.83, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "France", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.89, ymax = 0.89, xmin = labelx, xmax = labelx) +
+    ymin = 0.88, ymax = 0.88, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "China", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
-    ymin = 0.93, ymax = 0.93, xmin = labelx, xmax = labelx) +
+    ymin = 0.92, ymax = 0.92, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "Canada", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.965, ymax = 0.965, xmin = labelx, xmax = labelx) +
@@ -420,6 +404,16 @@ time$layout$clip[time$layout$name == "panel"] <- "off"
 
 #### Compiling Figure 1
 ```r
+map / (senior | any) / time +
+plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')',
+  ) & theme(plot.tag=element_text(face='bold'))
+
+  plot_layout(ncol=3, widths=c(3,4,3)) +
+  
+
 plot_grid(
   plot_grid(senior, any, nrow=1,ncol=2, rel_widths=c(4,3),
             labels=c('(b)','(c)'), hjust = c(-0.65, 0.5)
@@ -428,6 +422,19 @@ plot_grid(
   ncol=1, nrow=2, rel_heights=c(2,3), labels=c('','(d)'))
 ```
 
+Total countries with at least one senior-author preprint:
+```sql
+SELECT COUNT(DISTINCT i.country)
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM article_authors
+	GROUP BY article
+)
+AND i.country != 'UNKNOWN'
+```
 
 ### Figure 2: Preprint adoption
 
@@ -445,21 +452,19 @@ data$prop_preprint <- data$senior_author_preprints / 67885
 data$adoption <- data$prop_preprint / data$prop_citable
 # NOTE: We don't use a live sum of the preprints because this table
 # excludes 9000+ "UNKNOWN" preprints
-
-# only reduce the list AFTER calculating adoption so the total citable documents includes everyone
-data <- data[data$senior_author_preprints>=50,]
 ```
 
 #### Figure 2a: Scientific output
 ```r
-library(ggrepel)
-
 # we need an "adoption=1" line to draw through the plot, but
 # it's trickier to define with the log scales so this thing just
 # defines the endpoints of the line:
-oneline <- data.frame(x=c(243.1, 16495865), y=c(1,67855))
 
-# Panel 2a
+oneline <- data.frame(x=c(sum(data$citable_total)/67855, sum(data$citable_total)), y=c(1,67855))
+
+# only reduce the list AFTER calculating adoption so the total citable documents includes everyone
+data <- data[data$senior_author_preprints>=50,]
+
 scatter <- ggplot(data) +
   geom_point(aes(x=citable_total, y=senior_author_preprints, color=adoption)) +
   geom_line(data=oneline, aes(x=x, y=y), color='red') +
@@ -468,8 +473,8 @@ scatter <- ggplot(data) +
     size=4,
     segment.size = 0.5,
     segment.color = "grey50",
-    point.padding = 0.2,
-    max.iter = 5000
+    point.padding = 0.15,
+    max.iter = 3500
   ) +
   scale_x_log10(labels=comma) +
   scale_y_log10(labels=comma) +
@@ -487,11 +492,11 @@ scatter <- ggplot(data) +
 This panel is actually two plots stuck together. The first plot:
 ```r
 adoption_top <- ggplot(data=top_n(data, 10, adoption),
-                         aes(x=reorder(country, adoption), y=adoption, fill=adoption)) +
+                       aes(x=reorder(country, adoption), y=adoption, fill=adoption)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
-  scale_fill_gradient(limits = c(0,2.2)) +
-  coord_flip(ylim=c(0,2.3)) +
+  scale_fill_gradient(limits = c(0,2.4)) +
+  coord_flip(ylim=c(0,2.4)) +
   labs(x = "", y = "") +
   theme_bw() +
   basetheme +
@@ -508,8 +513,8 @@ And the second:
 adoption_bottom <- ggplot(data=top_n(data, -10, adoption), aes(x=reorder(country, adoption), y=adoption, fill=adoption)) +
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0)) +
-  scale_fill_gradient(limits = c(0,2.2)) +
-  coord_flip(ylim=c(0,2.3)) +
+  scale_fill_gradient(limits = c(0,2.4)) +
+  coord_flip(ylim=c(0,2.4)) +
   labs(x = "", y = "bioRxiv adoption") +
   theme_bw() +
   basetheme +
@@ -536,10 +541,10 @@ Count of preprints with at least two countries:
 SELECT COUNT(DISTINCT article) 
 FROM (
   SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
-  FROM prod.article_authors aa
-  INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-  INNER JOIN prod.institutions i ON ai.institution=i.id
-  INNER JOIN prod.countries c ON i.country=c.alpha2
+  FROM article_authors aa
+  INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+  INNER JOIN institutions i ON ai.institution=i.id
+  INNER JOIN countries c ON i.country=c.alpha2
   WHERE i.id > 0
   GROUP BY aa.article
 ) AS counts
@@ -837,19 +842,19 @@ We also need to find the list of countries that appear as senior author on inter
 SELECT senior, COUNT(DISTINCT article)
 FROM (
 	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
-	FROM prod.article_authors aa
-	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN prod.institutions i ON ai.institution=i.id
-	INNER JOIN prod.countries c ON i.country=c.alpha2
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
 	LEFT JOIN (
 		SELECT aa.article, c.name AS country
-		FROM prod.article_authors aa
-		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-		INNER JOIN prod.institutions i ON ai.institution=i.id
-		INNER JOIN prod.countries c ON i.country=c.alpha2
+		FROM article_authors aa
+		INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN institutions i ON ai.institution=i.id
+		INNER JOIN countries c ON i.country=c.alpha2
 		WHERE aa.id IN ( --- only show entry for senior author on each paper
 			SELECT MAX(id)
-			FROM prod.article_authors
+			FROM article_authors
 			GROUP BY article
 		) AND ---exclude the senior-author papers from contributor countries
 		c.alpha2 NOT IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
@@ -858,10 +863,10 @@ FROM (
 		SELECT DISTINCT article
 		FROM (
 			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
-			FROM prod.article_authors aa
-			INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-			INNER JOIN prod.institutions i ON ai.institution=i.id
-			INNER JOIN prod.countries c ON i.country=c.alpha2
+			FROM article_authors aa
+			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN institutions i ON ai.institution=i.id
+			INNER JOIN countries c ON i.country=c.alpha2
 			WHERE i.id > 0
 			GROUP BY aa.article
 			ORDER BY countrycount DESC
@@ -869,10 +874,10 @@ FROM (
 		WHERE countrycount >= 2
 	) AND aa.id IN ( --- list all entries for authors from contributor countries
 		SELECT aa.id
-		FROM prod.article_authors aa
-		INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-		INNER JOIN prod.institutions i ON ai.institution=i.id
-		INNER JOIN prod.countries c ON i.country=c.alpha2
+		FROM article_authors aa
+		INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN institutions i ON ai.institution=i.id
+		INNER JOIN countries c ON i.country=c.alpha2
 		WHERE c.alpha2 IN ('CZ', 'TH', 'EE', 'CO', 'GR', 'TR', 'KE', 'BD', 'IS', 'HR', 'EG', 'UG', 'EC', 'TZ', 'VN', 'PE', 'ID', 'SK')
 	)
 ) AS intntl
@@ -904,8 +909,8 @@ for(contributor in contributors) {
       overall -  totals[totals$country==senior,]$intl_senior_author - length(subset[subset$senior!=senior,]$article) # no collab, no senior
     )
     contingency <- matrix(contingency, nrow = 2,
-     dimnames = list(collaborator = c("Contrib", "NoContrib"),
-                    senior = c("AUS", "NoAUS")))
+     dimnames = list(senior = c("With senior", "Without senior"),
+        contributor = c("With contributor", "Without contributor")))
     fishtest <- fisher.test(contingency, alternative = "greater")
     entry <- list(
       contributor=contributor,
@@ -948,7 +953,7 @@ INNER JOIN (
         )
       FROM article_traffic
     ) AS ordered_data
-    WHERE rank <= 3
+    WHERE rank <= 6
   ) AS top3
 	GROUP BY 1
 ) AS dloads ON aa.article=dloads.article
@@ -956,6 +961,13 @@ WHERE aa.id IN (
 	SELECT MAX(id)
 	FROM article_authors
 	GROUP BY article
+) AND aa.article IN (
+  SELECT article FROM (
+    SELECT article, COUNT(id) AS months
+    FROM article_traffic
+    GROUP BY article
+  ) AS countmonths
+  WHERE months>=6
 )
 ORDER BY dloads.downloads DESC
 ```
@@ -1153,14 +1165,14 @@ Saved as `preprints_per_journal.csv`:
 
 ```sql
 SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
-FROM prod.article_authors aa
-INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN prod.institutions i ON ai.institution=i.id
-INNER JOIN prod.countries c ON i.country=c.alpha2
-INNER JOIN prod.publications p ON aa.article=p.article
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+INNER JOIN publications p ON aa.article=p.article
 WHERE aa.id IN (
 	SELECT MAX(id)
-	FROM prod.article_authors
+	FROM article_authors
 	GROUP BY article
 )
 AND aa.observed < '2019-01-01'
@@ -1206,25 +1218,25 @@ Count of how many preprints have country data for the first and last author, AND
 SELECT COUNT(DISTINCT first.article)
 FROM (
 	SELECT aa.article, c.name
-	FROM prod.article_authors aa
-	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN prod.institutions i ON ai.institution=i.id
-	INNER JOIN prod.countries c ON i.country=c.alpha2
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
 	WHERE aa.id IN (
 		SELECT MIN(id)
-		FROM prod.article_authors
+		FROM article_authors
 		GROUP BY article
 	)
 ) AS first
 INNER JOIN (
 	SELECT aa.article, c.name
-	FROM prod.article_authors aa
-	INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-	INNER JOIN prod.institutions i ON ai.institution=i.id
-	INNER JOIN prod.countries c ON i.country=c.alpha2
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
 	WHERE aa.id IN (
 		SELECT MAX(id)
-		FROM prod.article_authors
+		FROM article_authors
 		GROUP BY article
 	)
 ) AS last ON first.article=last.article
@@ -1282,14 +1294,14 @@ Data saved as `country_journals.csv`:
 
 ```sql
 SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
-FROM prod.article_authors aa
-INNER JOIN prod.affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN prod.institutions i ON ai.institution=i.id
-INNER JOIN prod.countries c ON i.country=c.alpha2
-INNER JOIN prod.publications p ON aa.article=p.article
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+INNER JOIN publications p ON aa.article=p.article
 WHERE aa.id IN (
 	SELECT MAX(id)
-	FROM prod.article_authors
+	FROM article_authors
 	GROUP BY article
 )
 GROUP BY 1,2
@@ -1456,7 +1468,7 @@ plot_grid(heat, bar,
 
 ## Supplementary
 
-### Figure S1: Collaborators per paper
+### Figure 1, figure supplement 1: Collaborators per paper
 Both panels use data from the same query, saved as `collaborators_per_paper.csv`:
 
 ```sql
@@ -1472,7 +1484,7 @@ GROUP BY 1,2,3
 ORDER BY countries DESC, authors DESC
 ```
 
-#### Figure S1a: Authors per paper
+#### Figure 1, figure supplement 1a: Authors per paper
 ```r
 counts <- read.csv('collaborators_per_paper.csv')
 counts$time <- ((12*(counts$year - 2013))+counts$month)-10
@@ -1522,7 +1534,7 @@ x <- cor.test(authormeans$time, authormeans$mean, method='pearson')
 x$p.value
 ```
 
-#### Figure S1b: Countries per paper
+#### Figure 1, figure supplement 1b: Countries per paper
 ```r
 countrymeans = data.frame(
   time=integer(), mean=double(), moving=double()
@@ -1563,7 +1575,7 @@ monthly_country$layout$clip[monthly_country$layout$name == "panel"] <- "off"
 
 ```
 
-#### Compiling Figure S1
+#### Compiling Figure 1, figure supplement 1
 ```r
 plot_grid(monthly_authors, monthly_country,
   nrow=2, ncol=1, align='v', labels=c('(a)','(b)'))
@@ -1696,4 +1708,36 @@ fig + plot_annotation(
     tag_prefix = '(',
     tag_suffix = ')',
   ) & theme(plot.tag=element_text(face='bold'))
+```
+
+## Statements in paper
+Number of authors with "unknown" country:
+```sql
+SELECT COUNT(id)
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+WHERE ai.institution=0
+```
+
+Number of affiliation strings with "unknown" country:
+```sql
+SELECT COUNT(DISTINCT aa.affiliation)
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+WHERE ai.institution=0
+```
+
+Select random sample from papers in "unknown" category:
+```sql
+SELECT aa.name, aa.affiliation, aa.email, aa.article, random() AS randx
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+WHERE aa.id IN (
+  SELECT MAX(id)
+  FROM article_authors
+  GROUP BY article
+) AND 
+ai.institution=0
+ORDER BY random()
+LIMIT 1486
 ```
