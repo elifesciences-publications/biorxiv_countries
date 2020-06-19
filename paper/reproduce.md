@@ -1408,7 +1408,7 @@ built +
 
 #### Correlations
 ```r
-dloads <- read.csv('downloads_per_paper.csv')
+dloads <- read.csv('../downloads_per_paper.csv')
 dloads$counting <- 1 # so we can count papers per country
 tokeep <- aggregate(dloads$counting, by=list(country=dloads$country), FUN=sum)
 colnames(tokeep) <- c('country','preprints')
@@ -1459,11 +1459,13 @@ Setting up the data:
 
 ```r
 chitest <- function(row) {
-  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
+  # NOTE:The "totalpubs" value calculated below must be pasted here
+  # because it's too annoying to pass it in.
+  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/32273, alternative = "greater")
   return(result$p.value)
 }
 
-jlinks <- read.csv('country_journals.csv')
+jlinks <- read.csv('../country_journals.csv')
 jlinks <- cleanup_countries(jlinks)
 colnames(jlinks) <- c('country','journal','preprints')
 # figure out total preprints per journal
@@ -1477,15 +1479,31 @@ colnames(jlinks) <- c('country','journal','preprints','journaltotal','countrytot
 totalpubs <- sum(jlinks$preprints)
 jlinks <- jlinks[jlinks$country != 'UNKNOWN',]
 jlinks <- jlinks[jlinks$preprints >= 15,] # leave out links without very many preprints
+
 # do the testing:
 jlinks$p <- by(jlinks, 1:nrow(jlinks), chitest)
 jlinks$expected <- (jlinks$countrytotal / totalpubs) * jlinks$journaltotal
 
 jlinks$padj <- p.adjust(jlinks$p, method='BH')
+
+# Fix long journal names
+jlinks[jlinks$journal=='The Journal of Physical Chemistry B',]$journal <- 'Physical Chemistry B'
+jlinks[jlinks$journal=='Proceedings of the Royal Society B: Biological Sciences',]$journal <- 'Proceedings B'
 ```
 
 #### Figure 5a: Country/journal links
 ```r
+# we want all the text to be the same size, just smaller
+# for this fig
+fig5size <- unit(9.5, "pt")
+fig5theme <- theme(
+  axis.text.x = element_text(size=fig5size, color = themedarktext),
+  axis.text.y = element_text(size=fig5size, color = themedarktext),
+  axis.title.x = element_text(size=fig5size, color = themedarktext),
+  axis.title.y = element_text(size=fig5size, color = themedarktext),
+  legend.text = element_text(size=fig5size, color = themedarktext),
+)
+
 #sizing is p value
 new <- jlinks %>% select(country, journal, preprints, padj)
 tokeep.journal <- new[new$padj <= 0.05,]$journal
@@ -1517,13 +1535,13 @@ heat <- ggplot() +
   geom_tile(data=background, aes(x=country, y=journal, height=1, width=1), color='grey', fill='white') +
   # then the real data:
   geom_tile(data=toplot, # the real boxes
-    aes(
-      x=country,
-      y=journal,
-      #x=reorder(country, -countrytotal),
-      #y=reorder(journal, journaltotal),
-      fill=preprints, height=size, width=size
-    )
+            aes(
+              x=country,
+              y=journal,
+              #x=reorder(country, -countrytotal),
+              #y=reorder(journal, journaltotal),
+              fill=preprints, height=size, width=size
+            )
   ) + 
   scale_x_discrete(position = "top", limits=xorder) +
   scale_y_discrete(limits=yorder) +
@@ -1531,16 +1549,16 @@ heat <- ggplot() +
   coord_fixed() + # to keep the tiles square
   labs(x='Country', y='Journal') +
   theme_bw() +
-  basetheme +
+  fig5theme +
   theme(
     axis.text.x=element_text(angle=65, vjust=0, hjust=0),
     panel.background=element_blank(),
     panel.grid.minor=element_blank(),
     panel.grid.major=element_blank(),
     axis.ticks = element_blank(),
-    legend.position = c(-1.4,1)
-    #legend.direction = 'horizontal',
-    #legend.key.width=unit(3,"lines")
+    legend.position = c(-1.4,1),
+    plot.margin = unit(c(0,0,0,0), "cm"),
+    legend.title = element_text(size=fig5size)
   )
 ```
 
@@ -1568,7 +1586,7 @@ heatscale <- ggplot() +
   scale_y_discrete(position = "right") +
   labs(x='q-value', y='') +
   theme_void() +
-  basetheme +
+  fig5theme +
   theme(
     axis.title.x=element_text(vjust=0, hjust=0, color='black'),
     axis.text.x=element_text(hjust=1),
@@ -1585,17 +1603,23 @@ heatscale <- ggplot() +
 newplot <- jlinks[jlinks$country=='United States',]
 newplot$over <- (newplot$preprints - newplot$expected)/newplot$expected
 newplot <- newplot[newplot$expected >= 30,]
+newplot <- newplot[abs(newplot$over) > 0.1,]
+
+newplot[newplot$journal=='Applied and Environmental Microbiology',]$journal <- 'Applied and Env. Microbiology'
+newplot[newplot$journal=='American Journal of Human Genetics',]$journal <- 'Amer. Jour. of Human Genetics'
+
 bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05))) +
   geom_bar(stat='identity') +
   geom_text(aes(x=reorder(journal,over), y=ifelse(newplot$over > 0, -0.01, 0.01), label=journal),
-            hjust=ifelse(newplot$over > 0, 1, 0)) +
+            hjust=ifelse(newplot$over > 0, 1, 0),
+            size=unit(3.4, 'pt')) +
   geom_hline(yintercept=0, color='black',size=1) +
   coord_flip() +
-  scale_y_continuous(limits=c(-0.5, 0.77),
-      breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0), label=percent) +
+  scale_y_continuous(limits=c(-0.6, 0.82),
+                     breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0), label=label_percent(accuracy=1)) +
   labs(y='Overrepresentation of United States',x='Journal') +
   theme_bw() +
-  basetheme +
+  fig5theme +
   scale_fill_manual(values=c('#999999','red')) +
   theme(
     legend.position='none',
@@ -1610,7 +1634,8 @@ plot_grid(heat, bar,
           ncol=2, align='h', axis='b',
           labels=c('(a)','(b)'),
           hjust=c(-1, 0.2)
-) + draw_plot(heatscale, x=0.04, y=0.8212, width=0.1, height=0.1)
+) + draw_plot(heatscale,
+      x=0.022, y=0.6, width=0.1, height=0.1)
 ```
 
 #### Journal/country links

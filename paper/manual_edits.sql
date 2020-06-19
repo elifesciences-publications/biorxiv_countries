@@ -1349,3 +1349,126 @@ INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL I
 INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United Arab Emirates',3379);
 INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United Kingdom',31);
 INSERT INTO affiliation_institutions (affiliation, institution) VALUES ('EMAIL INFERENCE: United States',7);
+
+---Fixing journal names
+UPDATE publications SET journal='G3' WHERE journal LIKE 'G3%';
+
+UPDATE publications SET journal='Proceedings of the Royal Society B: Biological Sciences' WHERE journal='Proceedings B';
+
+UPDATE publications SET journal='Proceedings of the Royal Society B: Biological Sciences' WHERE journal='Proceedings. Biological Sciences';
+
+UPDATE publications SET journal='PNAS' WHERE journal='Proceedings Of The National Academy Of Sciences Of The United States Of America';
+
+UPDATE publications SET journal='Philosophical Transactions B' WHERE LOWER(journal)=LOWER('PHILOSOPHICAL TRANSACTIONS OF THE ROYAL SOCIETY B: BIOLOGICAL SCIENCES');
+
+UPDATE publications SET journal='Philosophical Transactions B' WHERE LOWER(journal)=LOWER('Philosophical Transactions Of The Royal Society Of London. Series B, Biological Sciences');
+
+UPDATE publications SET journal='Philosophical Transactions A' WHERE LOWER(journal) LIKE LOWER('Philosophical Transactions of the Royal Society A: Mathematical%');
+
+-- Capitalization problems
+UPDATE publications SET journal='American Journal of Botany' WHERE LOWER(journal)=LOWER('American Journal of Botany');
+UPDATE publications SET journal='American Journal of Human Genetics' WHERE LOWER(journal)=LOWER('American Journal of Human Genetics');
+UPDATE publications SET journal='Annals of Botany' WHERE LOWER(journal)=LOWER('Annals of Botany');
+UPDATE publications SET journal='Annals of the Rheumatic Diseases' WHERE LOWER(journal)=LOWER('Annals of the Rheumatic Diseases');
+UPDATE publications SET journal='Antimicrobial Agents and Chemotherapy' WHERE LOWER(journal)=LOWER('Antimicrobial Agents and Chemotherapy');
+UPDATE publications SET journal='Applied and Environmental Microbiology' WHERE LOWER(journal)=LOWER('Applied and Environmental Microbiology');
+UPDATE publications SET journal='bioTROPICA' WHERE LOWER(journal)=LOWER('bioTROPICA');
+UPDATE publications SET journal='Briefings in Bioinformatics' WHERE LOWER(journal)=LOWER('Briefings in Bioinformatics');
+UPDATE publications SET journal='Briefings In Functional Genomics' WHERE LOWER(journal)=LOWER('Briefings In Functional Genomics');
+UPDATE publications SET journal='Current Opinion in Neurobiology' WHERE LOWER(journal)=LOWER('Current Opinion in Neurobiology');
+UPDATE publications SET journal='Development Genes and Evolution' WHERE LOWER(journal)=LOWER('Development Genes and Evolution');
+UPDATE publications SET journal='DNA Research' WHERE LOWER(journal)=LOWER('DNA Research');
+UPDATE publications SET journal='Ecology and Evolution' WHERE LOWER(journal)=LOWER('Ecology and Evolution');
+UPDATE publications SET journal='eLife' WHERE LOWER(journal)=LOWER('eLife');
+UPDATE publications SET journal='EMBO reports' WHERE LOWER(journal)=LOWER('EMBO reports');
+UPDATE publications SET journal='eneuro' WHERE LOWER(journal)=LOWER('eneuro');
+UPDATE publications SET journal='European Journal of Human Genetics' WHERE LOWER(journal)=LOWER('European Journal of Human Genetics');
+UPDATE publications SET journal='Frontiers in Genetics' WHERE LOWER(journal)=LOWER('Frontiers in Genetics');
+UPDATE publications SET journal='Frontiers in Immunology' WHERE LOWER(journal)=LOWER('Frontiers in Immunology');
+UPDATE publications SET journal='Frontiers in Neural Circuits' WHERE LOWER(journal)=LOWER('Frontiers in Neural Circuits');
+UPDATE publications SET journal='Frontiers in Neuroanatomy' WHERE LOWER(journal)=LOWER('Frontiers in Neuroanatomy');
+UPDATE publications SET journal='Frontiers in Neurology' WHERE LOWER(journal)=LOWER('Frontiers in Neurology');
+UPDATE publications SET journal='genesis' WHERE LOWER(journal)=LOWER('genesis');
+UPDATE publications SET journal='Genetics in Medicine' WHERE LOWER(journal)=LOWER('Genetics in Medicine');
+UPDATE publications SET journal='Genome Biology and Evolution' WHERE LOWER(journal)=LOWER('Genome Biology and Evolution');
+UPDATE publications SET journal='Hormones and Behavior' WHERE LOWER(journal)=LOWER('Hormones and Behavior');
+UPDATE publications SET journal='IEEE/ACM Transactions on Computational Biology and Bioinformatics' WHERE LOWER(journal)=LOWER('IEEE/ACM Transactions on Computational Biology and Bioinformatics');
+UPDATE publications SET journal='International Journal of Antimicrobial Agents' WHERE LOWER(journal)=LOWER('International Journal of Antimicrobial Agents');
+UPDATE publications SET journal='International Journal of Epidemiology' WHERE LOWER(journal)=LOWER('International Journal of Epidemiology');
+UPDATE publications SET journal='iScience' WHERE LOWER(journal)=LOWER('iScience');
+UPDATE publications SET journal='Journal of Alzheimer''s Disease' WHERE LOWER(journal)=LOWER('Journal of Alzheimer''s Disease');
+UPDATE publications SET journal='Journal of Antimicrobial Chemotherapy' WHERE LOWER(journal)=LOWER('Journal of Antimicrobial Chemotherapy');
+UPDATE publications SET journal='Journal of Bacteriology' WHERE LOWER(journal)=LOWER('Journal of Bacteriology');
+UPDATE publications SET journal='Journal of Biomechanics' WHERE LOWER(journal)=LOWER('Journal of Biomechanics');
+UPDATE publications SET journal='Journal of Cell Science' WHERE LOWER(journal)=LOWER('Journal of Cell Science');
+UPDATE publications SET journal='Journal Of Chemical Ecology' WHERE LOWER(journal)=LOWER('Journal Of Chemical Ecology');
+UPDATE publications SET journal='Journal of Chemical Information and Modeling' WHERE LOWER(journal)=LOWER('Journal of Chemical Information and Modeling');
+UPDATE publications SET journal='Journal of Chemical Theory and Computation' WHERE LOWER(journal)=LOWER('Journal of Chemical Theory and Computation');
+UPDATE publications SET journal='Journal of Cognitive Neuroscience' WHERE LOWER(journal)=LOWER('Journal of Cognitive Neuroscience');
+UPDATE publications SET journal='Journal of Computational Biology' WHERE LOWER(journal)=LOWER('Journal of Computational Biology');
+UPDATE publications SET journal='Journal of Computational Chemistry' WHERE LOWER(journal)=LOWER('Journal of Computational Chemistry');
+UPDATE publications SET journal='Journal of Computational Neuroscience' WHERE LOWER(journal)=LOWER('Journal of Computational Neuroscience');
+UPDATE publications SET journal='Journal of Computer-Aided Molecular Design' WHERE LOWER(journal)=LOWER('Journal of Computer-Aided Molecular Design');
+UPDATE publications SET journal='Journal of Economic Entomology' WHERE LOWER(journal)=LOWER('Journal of Economic Entomology');
+UPDATE publications SET journal='Journal of Experimental Botany' WHERE LOWER(journal)=LOWER('Journal of Experimental Botany');
+UPDATE publications SET journal='Journal Of Genetics' WHERE LOWER(journal)=LOWER('Journal Of Genetics');
+UPDATE publications SET journal='Journal of Molecular Biology' WHERE LOWER(journal)=LOWER('Journal of Molecular Biology');
+UPDATE publications SET journal='Journal of Neuroscience Methods' WHERE LOWER(journal)=LOWER('Journal of Neuroscience Methods');
+UPDATE publications SET journal='Journal of Neuroscience' WHERE LOWER(journal)=LOWER('Journal of Neuroscience');
+UPDATE publications SET journal='Journal of Proteome Research' WHERE LOWER(journal)=LOWER('Journal of Proteome Research');
+UPDATE publications SET journal='Journal of Structural Biology' WHERE LOWER(journal)=LOWER('Journal of Structural Biology');
+UPDATE publications SET journal='Journal of the American Society for Mass Spectrometry' WHERE LOWER(journal)=LOWER('Journal of the American Society for Mass Spectrometry');
+UPDATE publications SET journal='Journal of The Royal Society Interface' WHERE LOWER(journal)=LOWER('Journal of The Royal Society Interface');
+UPDATE publications SET journal='Journal of Theoretical Biology' WHERE LOWER(journal)=LOWER('Journal of Theoretical Biology');
+UPDATE publications SET journal='Journal of Virology' WHERE LOWER(journal)=LOWER('Journal of Virology');
+UPDATE publications SET journal='Journal of Vision' WHERE LOWER(journal)=LOWER('Journal of Vision');
+UPDATE publications SET journal='Lab on a Chip' WHERE LOWER(journal)=LOWER('Lab on a Chip');
+UPDATE publications SET journal='mBio' WHERE LOWER(journal)=LOWER('mBio');
+UPDATE publications SET journal='Methods in Molecular Biology' WHERE LOWER(journal)=LOWER('Methods in Molecular Biology');
+UPDATE publications SET journal='Molecular Biology and Evolution' WHERE LOWER(journal)=LOWER('Molecular Biology and Evolution');
+UPDATE publications SET journal='Molecular Biology of the Cell' WHERE LOWER(journal)=LOWER('Molecular Biology of the Cell');
+UPDATE publications SET journal='Molecular Phylogenetics and Evolution' WHERE LOWER(journal)=LOWER('Molecular Phylogenetics and Evolution');
+UPDATE publications SET journal='mSphere' WHERE LOWER(journal)=LOWER('mSphere');
+UPDATE publications SET journal='mSystems' WHERE LOWER(journal)=LOWER('mSystems');
+UPDATE publications SET journal='Neurobiology of Disease' WHERE LOWER(journal)=LOWER('Neurobiology of Disease');
+UPDATE publications SET journal='NeuroToxicology' WHERE LOWER(journal)=LOWER('NeuroToxicology');
+UPDATE publications SET journal='Orphanet Journal of Rare Diseases' WHERE LOWER(journal)=LOWER('Orphanet Journal of Rare Diseases');
+UPDATE publications SET journal='PAIN' WHERE LOWER(journal)=LOWER('PAIN');
+UPDATE publications SET journal='PLOS Computational Biology' WHERE LOWER(journal)=LOWER('PLOS Computational Biology');
+UPDATE publications SET journal='PLOS Currents' WHERE LOWER(journal)=LOWER('PLOS Currents');
+UPDATE publications SET journal='PLOS Genetics' WHERE LOWER(journal)=LOWER('PLOS Genetics');
+UPDATE publications SET journal='PLOS ONE' WHERE LOWER(journal)=LOWER('PLOS ONE');
+UPDATE publications SET journal='Proceedings of the Royal Society B: Biological Sciences' WHERE LOWER(journal)=LOWER('Proceedings of the Royal Society B: Biological Sciences');
+UPDATE publications SET journal='Progress in Biophysics and Molecular Biology' WHERE LOWER(journal)=LOWER('Progress in Biophysics and Molecular Biology');
+UPDATE publications SET journal='PROTEOMICS' WHERE LOWER(journal)=LOWER('PROTEOMICS');
+UPDATE publications SET journal='Respiratory Research' WHERE LOWER(journal)=LOWER('Respiratory Research');
+UPDATE publications SET journal='Royal Society Open Science' WHERE LOWER(journal)=LOWER('Royal Society Open Science');
+UPDATE publications SET journal='Science of The Total Environment' WHERE LOWER(journal)=LOWER('Science of The Total Environment');
+UPDATE publications SET journal='Social Cognitive and Affective Neuroscience' WHERE LOWER(journal)=LOWER('Social Cognitive and Affective Neuroscience');
+UPDATE publications SET journal='Statistical Applications in Genetics and Molecular Biology' WHERE LOWER(journal)=LOWER('Statistical Applications in Genetics and Molecular Biology');
+UPDATE publications SET journal='Statistical Methods in Medical Research' WHERE LOWER(journal)=LOWER('Statistical Methods in Medical Research');
+UPDATE publications SET journal='STEM CELLS' WHERE LOWER(journal)=LOWER('STEM CELLS');
+UPDATE publications SET journal='The Journal of Cell Biology' WHERE LOWER(journal)=LOWER('The Journal of Cell Biology');
+UPDATE publications SET journal='The Journal of Experimental Biology' WHERE LOWER(journal)=LOWER('The Journal of Experimental Biology');
+UPDATE publications SET journal='The Journal of Neuroscience' WHERE LOWER(journal)=LOWER('The Journal of Neuroscience');
+UPDATE publications SET journal='The Journal of Physical Chemistry B' WHERE LOWER(journal)=LOWER('The Journal of Physical Chemistry B');
+UPDATE publications SET journal='Theoretical and Applied Genetics' WHERE LOWER(journal)=LOWER('Theoretical and Applied Genetics');
+UPDATE publications SET journal='Theory in Biosciences' WHERE LOWER(journal)=LOWER('Theory in Biosciences');
+UPDATE publications SET journal='Twin Research and Human Genetics' WHERE LOWER(journal)=LOWER('Twin Research and Human Genetics');
+
+-- Some journals appear with and without a leading "The ":
+UPDATE publications SET journal='American Journal of Human Genetics' WHERE journal='The American Journal of Human Genetics';
+UPDATE publications SET journal='Annals of Applied Statistics' WHERE journal='The Annals of Applied Statistics';
+UPDATE publications SET journal='International Journal of Developmental Biology' WHERE journal='The International Journal of Developmental Biology';
+UPDATE publications SET journal='International Journal of Infectious Diseases' WHERE journal='The International Journal of Infectious Diseases';
+UPDATE publications SET journal='Journal of Cell Biology' WHERE journal='The Journal of Cell Biology';
+UPDATE publications SET journal='Journal of Clinical Investigation' WHERE journal='The Journal of Clinical Investigation';
+UPDATE publications SET journal='Journal of Comparative Neurology' WHERE journal='The Journal of Comparative Neurology';
+UPDATE publications SET journal='Journal of Eukaryotic Microbiology' WHERE journal='The Journal of Eukaryotic Microbiology';
+UPDATE publications SET journal='Journal of Experimental Biology' WHERE journal='The Journal of Experimental Biology';
+UPDATE publications SET journal='Journal of Experimental Medicine' WHERE journal='The Journal of Experimental Medicine';
+UPDATE publications SET journal='Journal of General Physiology' WHERE journal='The Journal of General Physiology';
+UPDATE publications SET journal='Journal of Infectious Diseases' WHERE journal='The Journal of Infectious Diseases';
+UPDATE publications SET journal='Journal of Neuroscience' WHERE journal='The Journal of Neuroscience';
+UPDATE publications SET journal='Journal of Open Source Software' WHERE journal='The Journal of Open Source Software';
+UPDATE publications SET journal='New Phytologist' WHERE journal='The New Phytologist';
