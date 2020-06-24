@@ -185,8 +185,7 @@ plotted <- ggplot(data=toplot) +
   ) +
   labs(fill='Total preprints') +
   theme(panel.background = element_rect(fill = "white"),
-        panel.grid.major = element_line(size = 0.25, linetype = 'solid',
-                                        color = "grey"), 
+        panel.grid.major = element_line(size = 0.25, linetype = 'solid', color = "grey"), 
         legend.position = 'none',
         panel.border = element_blank(),
         axis.text.x=element_blank(),
@@ -204,6 +203,12 @@ Uses the same data as Figure 1d. Building the panel:
 monthframe=read.csv('../preprints_over_time.csv')
 data <- monthframe[monthframe$month=='2019-12',]
 data <- cleanup_countries(data)
+
+data$country <- as.character(data$country)
+data[data$country=='UNKNOWN',]$country <- 'Unknown'
+data[data$country=='OTHER',]$country <- 'Other'
+data$country <- as.factor(data$country)
+
 senior <- ggplot(
   data=data,
   aes(x=reorder(country, running_total), y=running_total, fill=country)
@@ -211,7 +216,7 @@ senior <- ggplot(
   geom_bar(stat="identity") +
   scale_y_continuous(expand=c(0,0), breaks=seq(0,30000,8000), labels=comma) +
   coord_flip(ylim=c(0,28000)) +
-  labs(x = "", y = "Proportion of total preprints, senior author") +
+  labs(x = "", y = "Preprints, senior author") +
   theme_bw() +
   scale_fill_brewer(palette = 'Set1', guide='legend',
                     aesthetics = c('color','fill')) +
@@ -261,7 +266,7 @@ Building the panel:
 data <- read.csv('supp_table01.csv')
 data <- cleanup_countries(data[1:8,])
 data$country <- as.character(data$country)
-data <- rbind(data, data.frame(alpha2=NA, country='OTHER',senior_author=10000,any_author=26247)) # dummy value for "senior author"
+data <- rbind(data, data.frame(alpha2=NA, country='Other',senior_author=10000,any_author=26247)) # dummy value for "senior author"
 data$country <- as.factor(data$country)
 
 any <- ggplot(
@@ -356,7 +361,7 @@ labelsize <- unit(10, "pt")
 time <- ggplot(monthframe, aes(x=month, y=running_total,
                                group=country, color=country, fill=country)) +
   geom_bar(position="fill", stat="identity") +
-  labs(x = "", y = "Cumulative preprints") +
+  labs(x = "", y = "Proportion of total preprints, senior author") +
   scale_y_continuous(expand=c(0,0)) +
   theme_bw() +
   scale_fill_brewer(palette = 'Set1', guide='legend',
@@ -369,7 +374,7 @@ time <- ggplot(monthframe, aes(x=month, y=running_total,
     plot.margin = unit(c(0,6,1,1), "lines"), # for right-margin labels
   ) +
   annotation_custom(
-    grob = textGrob(label = "UNKNOWN", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
+    grob = textGrob(label = "Unknown", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.04, ymax = 0.04, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "United States", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
@@ -378,7 +383,7 @@ time <- ggplot(monthframe, aes(x=month, y=running_total,
     grob = textGrob(label = "United Kingdom", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.52, ymax = 0.52, xmin = labelx, xmax = labelx) +
   annotation_custom(
-    grob = textGrob(label = "OTHER", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
+    grob = textGrob(label = "Other", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
     ymin = 0.72, ymax = 0.72, xmin = labelx, xmax = labelx) +
   annotation_custom(
     grob = textGrob(label = "Germany", hjust = 0, gp = gpar(fontsize = labelsize, col=themedarktext)),
@@ -404,16 +409,6 @@ time$layout$clip[time$layout$name == "panel"] <- "off"
 
 #### Compiling Figure 1
 ```r
-map / (senior | any) / time +
-plot_annotation(
-    tag_levels = 'a',
-    tag_prefix = '(',
-    tag_suffix = ')',
-  ) & theme(plot.tag=element_text(face='bold'))
-
-  plot_layout(ncol=3, widths=c(3,4,3)) +
-  
-
 plot_grid(
   plot_grid(senior, any, nrow=1,ncol=2, rel_widths=c(4,3),
             labels=c('(b)','(c)'), hjust = c(-0.65, 0.5)
@@ -622,6 +617,42 @@ ORDER BY 3 DESC, 2 DESC, 1 DESC
 LIMIT 10
 ```
 
+### Figure 1, figure supplement 2: Composition of "unknown" country category
+```r
+errorcalc <- function(acount) {
+  return(1.96 * sqrt(
+    ((acount/278) * (1-(acount/278))) / 278
+  ))
+}
+data <- NULL
+data <- read.csv('../unknown_sample/group_summary.csv')
+data$error <- errorcalc(data$count)
+data$group <- c('Top 27 countries','Bottom 148 countries')
+data <- data %>% pivot_longer(-c('group','error','count'),
+  names_to = "field",
+  values_to = "value",
+)
+data[data$field=='known_category',]$error <- 0
+data$field <- c(rep(c('Unknown', 'Known'),2))
+
+ggplot(data, aes(x=group, y=value, fill=field)) +
+  geom_bar(stat='identity', position='dodge') +
+  geom_errorbar(
+    aes(
+      x=group,
+      ymin=value - error,
+      ymax=value + error
+    ), width = 0.2,
+    position=position_dodge(width=0.9)
+  ) +
+  #coord_cartesian(ylim=c(0,0.15)) +
+  theme_bw() +
+  basetheme +
+  labs(x='Group', y='Proportion of preprints', fill='Country assignment') +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_y_continuous(label=percent)
+```
+
 ### Figure 2: Preprint adoption
 
 Data for all panels in this figure are available in **Supplementary Table 2**, which was compiled by adding the senior-author totals from Supplementary Table 1 to data scraped from Scimago. Loading the dataset and calculating the proportions:
@@ -789,7 +820,8 @@ FROM (
 ) AS counts
 ```
 
-#### Figure 3: Contributor countries
+Setting up the data:
+
 ```r
 contribs <- read.csv('supp_table08.csv')
 contribs <- cleanup_countries(contribs)
@@ -806,7 +838,7 @@ contribs <- contribs[(contribs$contributor=='TRUE'),]
 
 # add other countries for comparison
 top <- read.csv('supp_table08.csv')
-top <- top_n(top[top$intl_any_author > 50,], 5, intl_senior_rate)
+top <- top_n(top[top$intl_any_author > 50,], 5, intl_any_author)
 
 contribs <- rbind(contribs, top)
 contribs <- cleanup_countries(contribs)
@@ -821,7 +853,7 @@ senior_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=int
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.sen_rate, linetype=2) +
   coord_flip() +
-  scale_y_continuous(expand=c(0,0), labels=label_percent(accuracy=1)) +
+  scale_y_continuous(limits=c(0,0.55), expand=c(0,0), labels=label_percent(accuracy=1)) +
   labs(x='', y="Internat'l senior author rate") +
   manual_fill +
   theme_bw() +
@@ -838,7 +870,7 @@ intl_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_
   geom_bar(stat="identity") +
   geom_hline(yintercept=overall.intl_rate, linetype=2) +
   coord_flip() +
-  scale_y_continuous(expand=c(0,0), limits=c(0, 1.05), labels=label_percent(accuracy=1)) +
+  scale_y_continuous(expand=c(0,0), limits=c(0, 1.1), labels=label_percent(accuracy=1)) +
   labs(x='', y="Internat'l collaboration rate") +
   manual_fill +
   theme_bw() +
@@ -856,7 +888,7 @@ total <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_any_
   geom_bar(stat="identity") +
   coord_flip() +
   labs(x='', y="Internat'l preprints (any author)") +
-  scale_y_continuous(expand=c(0,0), labels=comma) +
+  scale_y_continuous(limits=c(0,15000), expand=c(0,0), labels=comma) +
   manual_fill +
   theme_bw() +
   basetheme +
@@ -1002,7 +1034,7 @@ ggplot(data = to_plot) +
 ```r
 data <- read.csv('supp_table08.csv')
 data <- cleanup_countries(data)
-data <- data[data$intl_any_author>30,]
+data <- data[data$intl_any_author>50,]
 
 cor.test(data$intl_senior_rate, data$intl_any_author, method="spearman")
 cor.test(data$intl_any_author, data$intl_collab_rate, method="spearman")
@@ -1013,8 +1045,9 @@ cor.test(data$intl_collab_rate, data$intl_senior_rate, method="spearman")
 a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
   scale_x_log10(labels=comma) +
+  scale_y_continuous(labels=label_percent(accuracy=1)) +
   scale_color_manual(values=c('#000000','red')) +
-  labs(x='International preprints, any author', y='% international senior authorship') +
+  labs(x='International preprints, any author (log)', y='% international senior authorship') +
   geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
   theme_bw() +
   basetheme +
@@ -1028,8 +1061,9 @@ a <- ggplot(data=data, aes(x=intl_any_author, y=intl_senior_rate)) +
 b <- ggplot(data=data, aes(x=intl_any_author, y=intl_collab_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
   scale_x_log10(labels=comma) +
+  scale_y_continuous(limits=c(0.4, 1), labels=label_percent(accuracy=1)) +
   scale_color_manual(values=c('#000000','red')) +
-  labs(x='International preprints, any author', y='% preprints w/ international collaborators') +
+  labs(x='International preprints, any author  (log)', y='% preprints w/ international collaborators') +
   geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
   theme_bw() +
   basetheme +
@@ -1042,6 +1076,8 @@ b <- ggplot(data=data, aes(x=intl_any_author, y=intl_collab_rate)) +
 ```r
 c <- ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate)) +
   geom_point(aes(color=as.factor(contributor)), size=2.5) +
+  scale_x_continuous(labels=label_percent(accuracy=1)) +
+  scale_y_continuous(labels=label_percent(accuracy=1)) +
   scale_color_manual(values=c('#000000','red')) +
   labs(x='% preprints w/ international collaborators', y='% international senior authorship') +
   geom_smooth(method='lm', formula= y~x, se=FALSE, size=0.5) +
@@ -1056,10 +1092,28 @@ c <- ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate)) +
 ```r
 fig <- a | b | c
 fig + plot_annotation(
-    tag_levels = 'a',
-    tag_prefix = '(',
-    tag_suffix = ')',
-  ) & theme(plot.tag=element_text(face='bold'))
+  tag_levels = 'a',
+  tag_prefix = '(',
+  tag_suffix = ')',
+) & theme(plot.tag=element_text(face='bold'))
+```
+
+### Figure 3, figure supplement 3: Contributor countries 3D plot
+```r
+library(plotly)
+
+data <- read.csv('supp_table08.csv')
+data <- cleanup_countries(data)
+data <- data[data$intl_any_author>50,]
+
+fig <- plot_ly(data, x = ~intl_any_author, y = ~intl_senior_rate, z = ~intl_collab_rate, color = ~as.factor(contributor), colors = c('#000000','red'))
+fig <- fig %>% add_markers()
+
+fig <- fig %>% layout(scene = list(xaxis = list(title = 'International preprints, any author'),
+  yaxis = list(title = '% international senior authorship'),
+  zaxis = list(title = '% preprints w/ international collaborators')))
+
+htmlwidgets::saveWidget(fig, 'fig3_s3.html')
 ```
 
 
@@ -1191,6 +1245,15 @@ for(contributor in contributors) {
 combos$padj <- combos$p * length(combos$contributor)
 ```
 
+Counting preprints with at least one author in a contributor country:
+```sql
+SELECT COUNT(DISTINCT aa.article)
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+WHERE c.alpha2 IN ('BD','CO','EC','EE','EG','GR','HR','ID','IS','KE','PE','SK','TH','TR','TZ','UG','VN')
+```
 
 ## Results: Preprint outcomes
 
@@ -1451,6 +1514,7 @@ WHERE aa.id IN (
 	FROM article_authors
 	GROUP BY article
 )
+AND aa.observed < '2019-01-01'
 GROUP BY 1,2
 ORDER BY 1,3 DESC
 ```
@@ -1461,7 +1525,7 @@ Setting up the data:
 chitest <- function(row) {
   # NOTE:The "totalpubs" value calculated below must be pasted here
   # because it's too annoying to pass it in.
-  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/32273, alternative = "greater")
+  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
   return(result$p.value)
 }
 
@@ -1488,22 +1552,12 @@ jlinks$padj <- p.adjust(jlinks$p, method='BH')
 
 # Fix long journal names
 jlinks[jlinks$journal=='The Journal of Physical Chemistry B',]$journal <- 'Physical Chemistry B'
-jlinks[jlinks$journal=='Proceedings of the Royal Society B: Biological Sciences',]$journal <- 'Proceedings B'
+jlinks[jlinks$journal=='American Journal of Human Genetics',]$journal <- 'Amer. Jour. of Human Genetics'
+jlinks[jlinks$journal=='Molecular Biology of the Cell',]$journal <- 'Molecular Bio. of the Cell'
 ```
 
 #### Figure 5a: Country/journal links
 ```r
-# we want all the text to be the same size, just smaller
-# for this fig
-fig5size <- unit(9.5, "pt")
-fig5theme <- theme(
-  axis.text.x = element_text(size=fig5size, color = themedarktext),
-  axis.text.y = element_text(size=fig5size, color = themedarktext),
-  axis.title.x = element_text(size=fig5size, color = themedarktext),
-  axis.title.y = element_text(size=fig5size, color = themedarktext),
-  legend.text = element_text(size=fig5size, color = themedarktext),
-)
-
 #sizing is p value
 new <- jlinks %>% select(country, journal, preprints, padj)
 tokeep.journal <- new[new$padj <= 0.05,]$journal
@@ -1528,6 +1582,10 @@ xorder <- unique(xorder$country)
 yorder <- toplot %>% arrange(journaltotal)
 yorder <- unique(yorder$journal)
 
+# we manually scoot the bottom journals towards the top
+# to make it easier to read:
+yorder <- yorder[c(seq(4,48), seq(1,3), seq(49,52))]
+
 background <- expand.grid(unique(toplot$journal), unique(toplot$country))
 colnames(background) <- c('journal','country')
 heat <- ggplot() + 
@@ -1549,16 +1607,15 @@ heat <- ggplot() +
   coord_fixed() + # to keep the tiles square
   labs(x='Country', y='Journal') +
   theme_bw() +
-  fig5theme +
+  basetheme +
   theme(
     axis.text.x=element_text(angle=65, vjust=0, hjust=0),
     panel.background=element_blank(),
     panel.grid.minor=element_blank(),
     panel.grid.major=element_blank(),
     axis.ticks = element_blank(),
-    legend.position = c(-1.4,1),
-    plot.margin = unit(c(0,0,0,0), "cm"),
-    legend.title = element_text(size=fig5size)
+    legend.position = c(-1.5,1.05),
+    plot.margin = unit(c(0,0,0,0), "cm")
   )
 ```
 
@@ -1586,7 +1643,7 @@ heatscale <- ggplot() +
   scale_y_discrete(position = "right") +
   labs(x='q-value', y='') +
   theme_void() +
-  fig5theme +
+  basetheme +
   theme(
     axis.title.x=element_text(vjust=0, hjust=0, color='black'),
     axis.text.x=element_text(hjust=1),
@@ -1602,24 +1659,24 @@ heatscale <- ggplot() +
 ```r
 newplot <- jlinks[jlinks$country=='United States',]
 newplot$over <- (newplot$preprints - newplot$expected)/newplot$expected
-newplot <- newplot[newplot$expected >= 30,]
-newplot <- newplot[abs(newplot$over) > 0.1,]
+newplot <- newplot[abs(newplot$over) > 0.15,]
 
-newplot[newplot$journal=='Applied and Environmental Microbiology',]$journal <- 'Applied and Env. Microbiology'
-newplot[newplot$journal=='American Journal of Human Genetics',]$journal <- 'Amer. Jour. of Human Genetics'
+newplot[newplot$journal=='Journal of Biological Chemistry',]$journal <- 'Jour. of Biological Chemistry'
+newplot[newplot$journal=='Applied and Environmental Microbiology',]$journal <- 'Applied and Env. Microbio.'
+newplot[newplot$journal=='Nature Structural & Molecular Biology',]$journal <- 'Nature Structural & Mol. Bio.'
 
 bar <- ggplot(newplot, aes(x=reorder(journal,over), y=over, fill=(newplot$padj <= 0.05))) +
   geom_bar(stat='identity') +
   geom_text(aes(x=reorder(journal,over), y=ifelse(newplot$over > 0, -0.01, 0.01), label=journal),
-            hjust=ifelse(newplot$over > 0, 1, 0),
-            size=unit(3.4, 'pt')) +
+            hjust=ifelse(newplot$over > 0, 1, 0)) +
+            #size=unit(3.4, 'pt')) +
   geom_hline(yintercept=0, color='black',size=1) +
   coord_flip() +
-  scale_y_continuous(limits=c(-0.6, 0.82),
-                     breaks=seq(-0.5, 0.75, 0.25), expand=c(0,0), label=label_percent(accuracy=1)) +
+  scale_y_continuous(limits=c(-0.7, 1.05),
+                     breaks=seq(-0.5, 1, 0.25), expand=c(0,0), label=label_percent(accuracy=1)) +
   labs(y='Overrepresentation of United States',x='Journal') +
   theme_bw() +
-  fig5theme +
+  basetheme +
   scale_fill_manual(values=c('#999999','red')) +
   theme(
     legend.position='none',
@@ -1635,56 +1692,13 @@ plot_grid(heat, bar,
           labels=c('(a)','(b)'),
           hjust=c(-1, 0.2)
 ) + draw_plot(heatscale,
-      x=0.022, y=0.6, width=0.1, height=0.1)
-```
-
-#### Journal/country links
-*tk is this actually used for anything?
-Saved as `preprints_per_journal.csv`:
-
-```sql
-SELECT c.name AS country, p.journal, COUNT(aa.article) AS preprints
-FROM article_authors aa
-INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
-INNER JOIN institutions i ON ai.institution=i.id
-INNER JOIN countries c ON i.country=c.alpha2
-INNER JOIN publications p ON aa.article=p.article
-WHERE aa.id IN (
-	SELECT MAX(id)
-	FROM article_authors
-	GROUP BY article
-)
-AND aa.observed < '2019-01-01'
-GROUP BY 1,2
-ORDER BY 1,3 DESC
+      x=0.025, y=0.65, width=0.1, height=0.1)
 ```
 
 Processing into the table, saved in full as **Supplementary Table 6**:
 ```r
-chitest <- function(row) {
-  result <- prop.test(x=row$preprints, n=row$journaltotal, p=row$countrytotal/23102, alternative = "greater")
-  return(result$p.value)
-}
-jlinks <- read.csv('country_journals.csv')
-jlinks <- cleanup_countries(jlinks)
-colnames(jlinks) <- c('country','journal','preprints')
-# figure out total preprints per journal
-journal_totals <- ddply(jlinks, .(journal), summarise, journaltotal = sum(preprints))
-# and per country:
-country_totals <- ddply(jlinks, .(country), summarise, journaltotal = sum(preprints))
-# incorporate totals:
-jlinks <- jlinks %>% inner_join(journal_totals, by=c('journal'='journal'))
-jlinks <- jlinks %>% inner_join(country_totals, by=c('country'='country'))
-colnames(jlinks) <- c('country','journal','preprints','journaltotal','countrytotal')
-totalpubs <- sum(jlinks$preprints)
-jlinks <- jlinks[jlinks$country != 'UNKNOWN',]
-# do the testing:
-jlinks$p <- by(jlinks, 1:nrow(jlinks), chitest)
-jlinks$expected <- (jlinks$countrytotal / totalpubs) * jlinks$journaltotal
-jlinks <- jlinks[jlinks$preprints >= 15,]
-
-jlinks$padj <- p.adjust(jlinks$p, method='BH')
-table <- table[table$padj <= 0.05,] %>% select(country, journal, preprints, expected, p, padj, journaltotal, countrytotal)
+table <- jlinks[jlinks$padj <= 0.05,] %>% select(country, journal, preprints, expected, p, padj, journaltotal, countrytotal)
+write.csv(table, 'supp_table06.csv')
 ```
 
 
@@ -1846,7 +1860,99 @@ ORDER BY random()
 LIMIT 325
 ```
 
-Correlation between DOI issuance and publication rate:
-```r
+### Network analysis thing
 
+```sql
+SELECT senior AS from, contributor AS to, COUNT(DISTINCT article) AS weight
+FROM (
+	SELECT DISTINCT ON (aa.article, c.name) aa.article, c.name AS contributor, seniors.country AS senior
+	FROM article_authors aa
+	INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+	INNER JOIN institutions i ON ai.institution=i.id
+	INNER JOIN countries c ON i.country=c.alpha2
+	LEFT JOIN (
+		SELECT aa.article, c.name AS country
+		FROM article_authors aa
+		INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+		INNER JOIN institutions i ON ai.institution=i.id
+		INNER JOIN countries c ON i.country=c.alpha2
+		WHERE aa.id IN ( --- only show entry for senior author on each paper
+			SELECT MAX(id)
+			FROM article_authors
+			GROUP BY article
+		)
+	) AS seniors ON aa.article=seniors.article
+	WHERE aa.article IN ( --- only show international papers
+		SELECT DISTINCT article
+		FROM (
+			SELECT aa.article, COUNT(c.alpha2) AS authorcount, COUNT(DISTINCT c.alpha2) AS countrycount
+			FROM article_authors aa
+			INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+			INNER JOIN institutions i ON ai.institution=i.id
+			INNER JOIN countries c ON i.country=c.alpha2
+			WHERE i.id > 0
+			GROUP BY aa.article
+			ORDER BY countrycount DESC
+		) AS countrz
+		WHERE countrycount >= 2
+	)
+) AS intntl
+WHERE senior IS NOT NULL
+AND senior != contributor
+GROUP BY 1,2
+```
+
+```r
+dloads <- read.csv('../downloads_per_paper.csv')
+dloads <- cleanup_countries(dloads)
+counts <- read.csv('supp_table01.csv')
+counts <- cleanup_countries(counts)
+medians <- ddply(dloads, .(country), summarise, med = median(downloads))
+data <- medians %>% inner_join(counts, by=c("country"="country")) %>%
+  select(country, med, senior_author)
+colnames(data) <- c('country','downloads','preprints')
+data <- data[data$preprints >= 100,]
+
+ranks <- data %>% 
+  arrange(desc(downloads), country)
+
+download_labels <- ranks$downloads
+
+ranks$downloads <- rownames(ranks)
+ranks <- ranks %>% 
+  arrange(desc(preprints), country)
+
+preprint_labels <- ranks$preprints
+
+ranks$preprints <- rownames(ranks)
+ranks$colorrank <- ranks$downloads
+library(tidyr)
+ranks <- ranks %>% pivot_longer(-c('country','colorrank'),
+    names_to = "category",
+    values_to = "rank"
+)
+ranks$rank <- as.integer(ranks$rank)
+ranks$colorrank <- as.integer(ranks$colorrank)
+ggplot(data = ranks, aes(x=category, y=rank, group=country)) +
+  geom_line(aes(color = colorrank), size = 2)+#, alpha = 0.5) +
+  geom_point(aes(color = colorrank), size = 4) +
+  scale_y_reverse(
+    # Features of the first axis
+    name = "Downloads",
+    breaks=seq(to=37),
+    labels=download_labels,
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.,
+      name="Preprints",
+      breaks=seq(to=37),
+      labels=preprint_labels
+    )
+  ) +
+  scale_x_discrete(expand=c(0.01, 0.01)) +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position='none',
+    axis.title.x = element_blank()
+  )
 ```
