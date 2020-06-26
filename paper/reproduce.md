@@ -1383,9 +1383,9 @@ colnames(data) <- c('country','downloads','preprints')
 data <- data[data$preprints >= 100,]
 dload_totals <- ggplot(data, aes(x=preprints, y=downloads)) +
   geom_point(size=3) +
-  geom_smooth(method='lm', se=FALSE, formula='y~x') +
+  geom_smooth(method='lm', formula='y~x') +
   scale_x_log10(labels=comma) +
-  labs(x='Total preprints, senior author', y='Downloads per preprint') +
+  labs(x='Total preprints, senior author', y='Downloads per preprint (first 6 mos.)') +
   theme_bw() +
   basetheme
 ```
@@ -1414,13 +1414,13 @@ medians <- medians %>% inner_join(pubs, by=c("country"="country")) %>%
 
 pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
   geom_point(size=3) +
-  geom_smooth(method='lm', se=FALSE, formula='y~x') +
+  geom_smooth(method='lm', formula='y~x') +
   scale_x_continuous(
     limits=c(125,275),
     breaks=seq(75,400,50)
   ) +
   scale_y_continuous(labels=label_percent(accuracy=1)) +
-  labs(x='Downloads per preprint', y='Publication rate') +
+  labs(x='Downloads per preprint (first 6 mos.)', y='Publication rate') +
   theme_bw() +
   basetheme
 ```
