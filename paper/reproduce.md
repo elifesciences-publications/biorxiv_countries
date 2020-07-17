@@ -26,7 +26,6 @@ library(dplyr) # for top_n and select()
 
 library(DescTools) # for harmonic mean
 
-setwd('/Users/rabdill/code/biorxiv_countries/code/paper/figures')
 themedarktext = "#707070"
 big_fontsize = unit(12, "pt")
 
@@ -854,7 +853,7 @@ senior_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=int
   geom_hline(yintercept=overall.sen_rate, linetype=2) +
   coord_flip() +
   scale_y_continuous(limits=c(0,0.55), expand=c(0,0), labels=label_percent(accuracy=1)) +
-  labs(x='', y="Internat'l senior author rate") +
+  labs(x='', y="International senior\nauthor rate") +
   manual_fill +
   theme_bw() +
   basetheme +
@@ -871,7 +870,7 @@ intl_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_
   geom_hline(yintercept=overall.intl_rate, linetype=2) +
   coord_flip() +
   scale_y_continuous(expand=c(0,0), limits=c(0, 1.1), labels=label_percent(accuracy=1)) +
-  labs(x='', y="Internat'l collaboration rate") +
+  labs(x='', y="International\ncollaboration rate") +
   manual_fill +
   theme_bw() +
   basetheme +
@@ -887,7 +886,7 @@ intl_rate <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_
 total <- ggplot(contribs, aes(x=reorder(country, -intl_senior_rate), y=intl_any_author, fill=color)) +
   geom_bar(stat="identity") +
   coord_flip() +
-  labs(x='', y="Internat'l preprints (any author)") +
+  labs(x='', y="International preprints\n(any author)") +
   scale_y_continuous(limits=c(0,15000), expand=c(0,0), labels=comma) +
   manual_fill +
   theme_bw() +
@@ -1099,21 +1098,24 @@ fig + plot_annotation(
 ```
 
 ### Figure 3, figure supplement 3: Contributor countries 3D plot
+Using the same data as figure 3, figure supplement 2:
+
 ```r
-library(plotly)
-
-data <- read.csv('supp_table08.csv')
-data <- cleanup_countries(data)
-data <- data[data$intl_any_author>50,]
-
-fig <- plot_ly(data, x = ~intl_any_author, y = ~intl_senior_rate, z = ~intl_collab_rate, color = ~as.factor(contributor), colors = c('#000000','red'))
-fig <- fig %>% add_markers()
-
-fig <- fig %>% layout(scene = list(xaxis = list(title = 'International preprints, any author'),
-  yaxis = list(title = '% international senior authorship'),
-  zaxis = list(title = '% preprints w/ international collaborators')))
-
-htmlwidgets::saveWidget(fig, 'fig3_s3.html')
+ggplot(data=data, aes(x=intl_collab_rate, y=intl_senior_rate, size=intl_any_author)) +
+  geom_point(aes(color=as.factor(contributor))) +
+  scale_x_continuous(labels=label_percent(accuracy=1)) +
+  scale_y_continuous(labels=label_percent(accuracy=1)) +
+  scale_color_manual(values=c('#000000','red')) +
+  scale_size_continuous(breaks=c(500,5000,10000)) +
+  guides(color="none") +
+  labs(x='% preprints w/ international collaborators',
+       y='% international senior authorship',
+       size='International preprints, any author') +
+  theme_bw() +
+  basetheme +
+  theme(
+    legend.position = 'bottom'
+  )
 ```
 
 
@@ -1315,7 +1317,7 @@ dloadplot <- ggplot(toplot, aes(x=reorder(country,downloads,FUN=median), y=downl
   geom_boxplot(outlier.shape = NA, coef=0) +
   coord_flip(ylim=c(0, 450)) +
   scale_y_continuous(expand=c(0,0)) +
-  geom_hline(yintercept=median(dloads$downloads), size=1, color='red') +
+  geom_hline(yintercept=median(dloads$downloads), size=0.5, color='red') +
   labs(y='Downloads per preprint', x='') +
   theme_bw() +
   basetheme
@@ -1383,7 +1385,6 @@ colnames(data) <- c('country','downloads','preprints')
 data <- data[data$preprints >= 100,]
 dload_totals <- ggplot(data, aes(x=preprints, y=downloads)) +
   geom_point(size=3) +
-  geom_smooth(method='lm', formula='y~x') +
   scale_x_log10(labels=comma) +
   labs(x='Total preprints, senior author', y='Downloads per preprint (first 6 mos.)') +
   theme_bw() +
@@ -1414,7 +1415,6 @@ medians <- medians %>% inner_join(pubs, by=c("country"="country")) %>%
 
 pubdload <- ggplot(medians, aes(x=downloads, y=pubrate)) +
   geom_point(size=3) +
-  geom_smooth(method='lm', formula='y~x') +
   scale_x_continuous(
     limits=c(125,275),
     breaks=seq(75,400,50)
@@ -1445,7 +1445,7 @@ toplot <- pubs[pubs$country %in% tokeep$country,] %>% select(country,pubrate)
 
 pubrateplot <- ggplot(toplot, aes(x=reorder(country,pubrate, reverse=TRUE), y=pubrate, fill=pubrate)) +
   geom_bar(stat="identity") +
-  geom_hline(yintercept=sum(pubs$published)/sum(pubs$total), color='red', size=1) + # overall
+  geom_hline(yintercept=sum(pubs$published)/sum(pubs$total), color='red', size=0.5) + # overall
   labs(y='Publication rate', x='') +
   coord_flip() +
   scale_y_continuous(expand=c(0,0), limits=c(0,0.8), labels=label_percent(accuracy=1)) +
@@ -1498,6 +1498,78 @@ medians <- medians %>% inner_join(totals, by=c("country"="country")) %>%
 cor.test(medians$downloads, medians$preprints, method='spearman')
 cor.test(medians$downloads, medians$pubrate, method='spearman')
 ```
+
+Evaluating downloads in each month relative to the overall popularity of bioRxiv over time. First, we get total downloads per month, saved as `downloads_with_date.csv`:
+```sql
+SELECT EXTRACT(month FROM aa.observed) AS month,
+	EXTRACT(year FROM aa.observed) AS year,
+	aa.article, dloads.downloads, c.name AS country
+FROM article_authors aa
+INNER JOIN affiliation_institutions ai ON aa.affiliation=ai.affiliation
+INNER JOIN institutions i ON ai.institution=i.id
+INNER JOIN countries c ON i.country=c.alpha2
+INNER JOIN (
+	SELECT article, SUM(pdf) AS downloads
+	FROM (
+    SELECT article, pdf
+    FROM (
+      SELECT *,
+        rank() OVER (
+          PARTITION BY article
+          ORDER BY year ASC, month ASC
+        )
+      FROM article_traffic
+    ) AS ordered_data
+    WHERE rank <= 6
+  ) AS top3
+	GROUP BY 1
+) AS dloads ON aa.article=dloads.article
+WHERE aa.id IN (
+	SELECT MAX(id)
+	FROM article_authors
+	GROUP BY article
+) AND aa.article IN (
+  SELECT article FROM (
+    SELECT article, COUNT(id) AS months
+    FROM article_traffic
+    GROUP BY article
+  ) AS countmonths
+  WHERE months>=6
+)
+ORDER BY dloads.downloads DESC
+```
+
+Then we calculate new monthly download numbers relative to the median number of downloads for all the papers posted in the same month:
+```r
+# get real medians
+new <- read.csv('~/code/biorxiv_countries/code/paper/downloads_with_date.csv')
+new <- cleanup_countries(new)
+
+# get unadjusted median downloads per country
+medians <- ddply(new, .(country), summarise, med = median(downloads))
+colnames(medians) <- c('country','dloads')
+
+# get median values for each month
+dadjusted <- ddply(new, .(date), summarise, med = median(downloads))
+colnames(dadjusted) <- c('date','datemedian')
+new <- new %>% inner_join(dadjusted, by=c("date"="date"))
+# adjust each download count by that month's median
+new$adjusted_dloads <- new$downloads / new$datemedian
+# get new country-level medians
+adjusted <- ddply(new, .(country), summarise, med = median(adjusted_dloads))
+colnames(adjusted) <- c('country','adjusted_median')
+# pull in the originally observed medians
+adjusted <- adjusted %>% inner_join(medians, by=c("country"="country"))
+
+# filter out the countries with less than 100 preprints
+new$counting <- 1 # so we can count papers per country
+tokeep <- aggregate(new$counting, by=list(country=new$country), FUN=sum)
+colnames(tokeep) <- c('country','preprints')
+tokeep <- tokeep[tokeep$preprints >= 100,]
+new <- new[new$country %in% tokeep$country,]
+cor.test(adjusted$dloads, adjusted$adjusted_median)
+```
+
 
 ### Figure 5: Journal links
 Data saved as `country_journals.csv`:
