@@ -1,3 +1,7 @@
+This code is associated with the paper from  ABDILL RA et al., "International authorship and
+collaboration across bioRxiv
+preprints". eLife, 2020. http://doi.org/10.7554/eLife.58496
+
 # rxivist spider
 
 ## Running the spider for real
